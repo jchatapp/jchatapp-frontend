@@ -5,44 +5,36 @@ import axios from 'axios';
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isConnected, setIsConnected] = useState(null); 
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = () => {
+    if (isLoading) return; 
+    setIsLoading(true); 
+
     axios
       .post('http://10.0.2.2:8000/login', { username, password })
       .then((response) => {
         console.log('Logged in:', response.data);
-        navigation.navigate('HomeScreen');
+        setIsLoading(false); 
+
+        const chatList = response.data.chatList; 
+        navigation.navigate('ChatListScreen', { chatList }); 
       })
       .catch((error) => {
         console.error('Login failed:', error.response?.data?.error);
-      });
-  };
-
-  const testConnectivity = () => {
-    axios
-      .get('http://10.0.2.2:8000/health')
-      .then(() => {
-        console.log('Server is reachable');
-        setIsConnected(true); 
-      })
-      .catch((error) => {
-        console.error('Server is not reachable:', error);
-        setIsConnected(false); 
+        setIsLoading(false); 
       });
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Login</Text>
-
       <TextInput
         style={styles.input}
         placeholder="Username"
         value={username}
         onChangeText={setUsername}
       />
-
       <TextInput
         style={styles.input}
         placeholder="Password"
@@ -50,16 +42,7 @@ const LoginScreen = ({ navigation }) => {
         value={password}
         onChangeText={setPassword}
       />
-
-      <Button title="Login" onPress={handleLogin} />
-
-      <Button title="Test Connection" onPress={testConnectivity} /> 
-      
-      {isConnected !== null && (
-        <Text style={styles.connectionStatus}>
-          {isConnected ? 'Connected to server' : 'Not connected to server'}
-        </Text>
-      )}
+      <Button title="Login" onPress={handleLogin} /> 
     </View>
   );
 };
@@ -82,11 +65,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 15,
     width: '80%',
-  },
-  connectionStatus: {
-    marginTop: 20,
-    fontSize: 16,
-    color: '#333',
   },
 });
 
