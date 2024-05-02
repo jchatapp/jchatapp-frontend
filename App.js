@@ -7,23 +7,27 @@ const LoginScreen = ({ navigation }) => {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleLogin = () => {
+  const handleLogin = async () => {
     if (isLoading) return; 
-    setIsLoading(true); 
-
-    axios
-      .post('http://10.0.2.2:8000/login', { username, password })
-      .then((response) => {
-        console.log('Logged in:', response.data);
-        setIsLoading(false); 
-
+    setIsLoading(true);
+  
+    try {
+      const response = await axios.post('http://10.0.2.2:8000/login', { username, password });
+      setIsLoading(false); 
+  
+      if (response.data.chatList) {
         const chatList = response.data.chatList; 
-        navigation.navigate('ChatListScreen', { chatList }); 
-      })
-      .catch((error) => {
-        console.error('Login failed:', error.response?.data?.error);
-        setIsLoading(false); 
-      });
+        console.log('Chat list:', chatList); 
+      } else {
+        console.error('Chat list not found in response');
+      }
+    } catch (error) {
+      setIsLoading(false); 
+  
+      console.error('Full error:', error); 
+      const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
+      console.error('Login failed:', errorMessage); 
+    }
   };
 
   return (
