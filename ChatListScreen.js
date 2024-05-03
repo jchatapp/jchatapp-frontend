@@ -27,7 +27,10 @@ const ChatListScreen = ({ route, navigation }) => {
           data={chatList}
           keyExtractor={(item) => item.thread_id}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => navigation.navigate('Chat', { chatId: item.thread_id })}>
+            <TouchableOpacity onPress={() => {
+                const userMessages = chatList.filter(item => item.user_id === item.users[0].user_id);
+                navigation.navigate('ChatMessages', { chatList: userMessages });
+            }}>
               <View style={styles.chatItem}>
                 <Image
                   style={styles.chatImage}
