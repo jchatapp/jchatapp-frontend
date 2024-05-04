@@ -5,6 +5,27 @@ const ChatListScreen = ({ route, navigation }) => {
   const [activeTab, setActiveTab] = useState('messages');
   const { chatList } = route.params;
 
+  const fetchChatMessages = async (threadId) => {
+    try {
+      const response = await fetch(`http://10.0.2.2:8000/chats/${threadId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat messages');
+      }
+      const data = await response.json();
+      return data;  
+    } catch (error) {
+      console.error('Failed to fetch chat messages:', error);
+      return null;  
+    }
+  };
+
+  const handlePressChatItem = async (item) => {
+    const chatMessages = await fetchChatMessages(item.thread_id);
+    if (chatMessages) {
+      navigation.navigate('ChatMessages', { chatList: chatMessages });
+    }
+  };
+
   return (
     <View style={styles.container}>
       <View style={styles.tabsContainer}>
@@ -27,10 +48,7 @@ const ChatListScreen = ({ route, navigation }) => {
           data={chatList}
           keyExtractor={(item) => item.thread_id}
           renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => {
-                const userMessages = chatList.filter(item => item.user_id === item.users[0].user_id);
-                navigation.navigate('ChatMessages', { chatList: userMessages });
-            }}>
+            <TouchableOpacity onPress={() => handlePressChatItem(item)}>
               <View style={styles.chatItem}>
                 <Image
                   style={styles.chatImage}

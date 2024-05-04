@@ -13,11 +13,9 @@ const LoginScreen = ({ navigation }) => {
   
     try {
       const response = await axios.post('http://10.0.2.2:8000/login', { username, password });
-      console.log(response)
       setIsLoading(false);
       if (response.data.chatList) {
         const chatList = response.data.chatList; 
-        console.log('Chat list:', JSON.stringify(chatList)); 
         navigation.navigate('ChatListScreen', { chatList });
       } else {
         console.error('Chat list not found in response');
