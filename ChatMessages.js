@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Button } from 'react-native';
 import { Video, Audio } from 'expo-av'; 
+import axios from 'axios';
 
 const RenderVoiceMessage = ({ src }) => {
   const [sound, setSound] = useState();
@@ -63,8 +64,51 @@ const ChatMessages = ({ route, navigation }) => {
   const senderPic = chatList.inviter.profile_pic_url;
   const receiverPic = chatList.users[0].profile_pic_url;
   const receiverName = chatList.users[0].full_name;
+  const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
+  const [cursor, setCursor] = useState(null);
+  const [moreAvailable, setMoreAvailable] = useState(true);
+  const [messages, setMessages] = useState(chatList.items || []);
+  const [messageIds, setMessageIds] = useState(new Set(chatList.items.map(item => item.item_id)));
+  const flatListRef = useRef();
 
-  const sortedItems = chatList.items.sort((a, b) => a.timestamp - b.timestamp);
+  useEffect(() => {
+    setMessages(chatList.items.sort((a, b) => b.timestamp - a.timestamp));
+  }, [chatList.items]);
+
+  const fetchOlderMessages = async (threadId, cursor) => {
+    try {
+      const response = await axios.get(`http://10.0.2.2:8000/chats/${threadId}/messages`, {
+        params: { cursor }
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Failed to load older messages:', error);
+    }
+  };
+
+  
+  const loadOlderMessages = async () => {
+    if (loadingOlderMessages || !moreAvailable) return;
+  
+    setLoadingOlderMessages(true);
+    const result = await fetchOlderMessages(chatList.thread_id, cursor);
+    console.log(result.moreAvailable)
+  
+    if (result.moreAvailable === false) {
+      setMoreAvailable(false); 
+      setLoadingOlderMessages(false);
+      return;
+    }
+  
+    if (result.messages && result.messages.length > 0) {
+      const filteredMessages = result.messages.filter(msg => !messageIds.has(msg.item_id));
+      const newMessageIds = new Set([...messageIds, ...filteredMessages.map(msg => msg.item_id)]);
+      setMessages(prevMessages => [...prevMessages, ...filteredMessages]);
+      setMessageIds(newMessageIds);
+    }
+    setCursor(result.cursor);
+    setLoadingOlderMessages(false);
+  };
 
   const renderTextMessage = (item, profilePicUrl, isSender) => (
     <View style={[
@@ -114,41 +158,48 @@ const ChatMessages = ({ route, navigation }) => {
 
   const renderMediaShare = (post, profilePicUrl, isSender) => {
     if (post.carousel_media && post.carousel_media.length) {
-      return post.carousel_media.map((media, index) => (
-        <TouchableOpacity key={index} onPress={() => showInViewer(media)}>
-          <Image
-            source={{ uri: media.image_versions2.candidates[0].url }}
-            style={{ width: 200, height: 200, borderRadius: 10, margin: 5 }}
-          />
-        </TouchableOpacity>
-      ));
-    } else if (post.image_versions2) { 
-      const img = post.image_versions2.candidates.reduce((prev, curr) => (prev.height > curr.height) ? prev : curr);
-      return (
-        <TouchableOpacity onPress={() => showInViewer(post)}>
-          <Image
-            source={{ uri: img.url }}
-            style={{ width: 200, height: 200, borderRadius: 10 }}
-          />
-        </TouchableOpacity>
-      );
-    } else if (post.video_versions) { 
-      return (
-        <TouchableOpacity onPress={() => showInViewer(post)}>
-          <Video
-            source={{ uri: post.video_versions[0].url }}
-            style={{ width: 200, height: 200 }}
-            resizeMode="cover"
-            shouldPlay={false}
-            isLooping
-            useNativeControls
-          />
-        </TouchableOpacity>
-      );
+        const firstMediaUrl = post.carousel_media[0].image_versions2 ? 
+                              post.carousel_media[0].image_versions2.candidates[0].url :
+                              post.carousel_media[0].video_versions[0].url;
+        const firstMediaCaption = post.caption.text;
+
+        return (
+            <View style={{ alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => showInViewer(post.carousel_media)}>
+                    <Image
+                        source={{ uri: firstMediaUrl }}
+                        style={{ width: 200, height: 200, borderRadius: 10, margin: 5 }}
+                    />
+                </TouchableOpacity>
+                {firstMediaCaption ? 
+                    <Text style={styles.captionStyle} numberOfLines={2} ellipsizeMode="tail">
+                        {firstMediaCaption}
+                    </Text> 
+                : null}
+            </View>
+        );
+    } else {
+        const mediaUrl = post.image_versions2 ? post.image_versions2.candidates[0].url : post.video_versions[0].url;
+        const mediaCaption = post.caption ? post.caption.text : '';
+
+        return (
+            <View style={{ alignItems: 'center' }}>
+                <TouchableOpacity onPress={() => showInViewer([post])}>
+                    <Image
+                        source={{ uri: mediaUrl }}
+                        style={{ width: 200, height: 200, borderRadius: 10 }}
+                    />
+                </TouchableOpacity>
+                {mediaCaption ? 
+                    <Text style={styles.captionStyle} numberOfLines={2} ellipsizeMode="tail">
+                        {mediaCaption}
+                    </Text> 
+                : null}
+            </View>
+        );
     }
-  
-    return <Text>Unsupported Media Type</Text>;
-  };
+};
+
   
   const renderLinkMessage = (item, profilePicUrl, isSender) => (
     <View style={[
@@ -165,26 +216,32 @@ const ChatMessages = ({ route, navigation }) => {
   );
 
   const renderItem = ({ item }) => {
-    const isSender = item.is_sent_by_viewer;
-    const profilePicUrl = isSender ? senderPic : receiverPic;
+    const isSender = item.is_sent_by_viewer; 
+    const profilePicUrl = isSender ? senderPic : receiverPic;  
+  
     let messageContent;
     switch (item.item_type) {
       case 'text':
         messageContent = renderTextMessage(item, profilePicUrl, isSender);
         break;
       case 'media':
-        const hasvideo = item.media.video_versions;
-        if (hasvideo) {
-           const bestVideo = item.media.video_versions[0]
-            messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height);
+        const hasVideo = item.media && item.media.video_versions;
+        if (hasVideo) {
+          const bestVideo = item.media.video_versions[0];
+          messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height);
         } else {
           let bestImg = item.media.image_versions2.candidates.reduce((prev, curr) => (prev.height > curr.height) ? prev : curr);
           messageContent = renderImageMessage(bestImg.url, profilePicUrl, isSender, bestImg.width, bestImg.height);
         }
         break;
-        case 'voice_media':
-          messageContent = <RenderVoiceMessage src={item.voice_media.media.audio.audio_src} />;
-          break;
+
+      case 'voice_media':
+        messageContent = <RenderVoiceMessage src={item.voice_media.media.audio.audio_src} />;
+        break;
+
+      case 'media_share':
+        messageContent = renderMediaShare(item.media_share, profilePicUrl, isSender);
+        break;
 
       default:
         messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
@@ -203,12 +260,6 @@ const ChatMessages = ({ route, navigation }) => {
           />
         )}
         {messageContent}
-        {isSender && (
-          <Image
-            style={styles.profileImage}
-            source={{ uri: profilePicUrl }}
-          />
-        )}
       </View>
     );
   };
@@ -227,10 +278,17 @@ const ChatMessages = ({ route, navigation }) => {
       </View>
       <View style={styles.separatorLine}></View>
       <FlatList
-        data={sortedItems}
-        keyExtractor={item => item.item_id.toString()} 
-        renderItem={renderItem}
-      />
+          data={messages}
+          renderItem={renderItem}
+          keyExtractor={item => item.id}
+          inverted 
+          ref={flatListRef}
+          onEndReached={loadOlderMessages} 
+          onEndReachedThreshold={0.1} 
+          ListFooterComponent={() => 
+        loadingOlderMessages ? <Text>Loading...</Text> : null
+      }
+    />
     </View>
   );
 };
@@ -273,8 +331,8 @@ const styles = StyleSheet.create({
     width: '100%',     
   },
   messageBox: {
-    borderRadius: 5,
-    padding: 8,
+    borderRadius: 10,
+    padding: 10,
     maxWidth: '70%',
   },
   senderMessageBox: {
@@ -301,6 +359,13 @@ const styles = StyleSheet.create({
     backgroundColor: 'gray',
     paddingLeft: 20,
   },
+  captionStyle: {
+    color: 'gray',  
+    fontSize: 12, 
+    textAlign: 'left',
+    maxWidth: 200, 
+    marginHorizontal: 10, 
+},
   progressBarContainer: {
     height: 7,
     width: 10,
