@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Button } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Button, TextInput } from 'react-native';
 import axios from 'axios';
 import {
   renderTextMessage,
@@ -21,6 +21,7 @@ const ChatMessages = ({ route, navigation }) => {
   const [messages, setMessages] = useState(chatList.items || []);
   const [lastTimestamp, setLastTimestamp] = useState(messages[messages.length - 1]?.timestamp);
   const [messageIds, setMessageIds] = useState(new Set(chatList.items.map(item => item.item_id)));
+  const [inputText, setInputText] = useState('');
   const flatListRef = useRef();
 
   useEffect(() => {
@@ -36,12 +37,13 @@ const ChatMessages = ({ route, navigation }) => {
       });
       if (response.data && response.data.messages.length > 0) {
         setMessages(currentMessages => {
-          const newUniqueMessages = response.data.messages.filter(msg => !messageIds.has(msg.item_id));
-  
+          const newUniqueMessages = response.data.messages.filter(msg => !messageIds.has(msg.item_id) && !msg.is_sent_by_viewer);
           newUniqueMessages.forEach(msg => messageIds.add(msg.item_id));
-
+  
           const updatedMessages = [...newUniqueMessages, ...currentMessages];
-          setLastTimestamp(updatedMessages[0].timestamp); 
+          if (newUniqueMessages.length > 0) {
+            setLastTimestamp(newUniqueMessages[0].timestamp); 
+          }
           return updatedMessages;
         });
       }
@@ -67,7 +69,46 @@ const ChatMessages = ({ route, navigation }) => {
     }
   };
 
+  const sendMessage = async () => {
+    if (inputText.trim()) {
+      const tempId = `temp_${Date.now()}`;  
+      const newMessage = {
+        id: tempId,
+        text: inputText,
+        is_sent_by_viewer: true,
+        timestamp: new Date().getTime(),
+        item_type: 'text'
+      };
   
+      setMessages(currentMessages => [newMessage, ...currentMessages]);
+      setMessageIds(prevIds => new Set(prevIds.add(tempId)));
+  
+      try {
+        const response = await axios.post(`http://10.0.2.2:8000/chats/${chatList.thread_id}/send_message`, {
+          message: inputText
+        });
+  
+        const { messageId } = response.data; 
+        setMessages(currentMessages =>
+          currentMessages.map(msg => msg.id === tempId ? { ...msg, id: messageId } : msg)
+        );
+        setMessageIds(prevIds => {
+          prevIds.delete(tempId);
+          return new Set(prevIds.add(messageId));
+        });
+  
+        setInputText('');
+      } catch (error) {
+        console.error('Error sending message:', error);
+        setMessages(currentMessages => currentMessages.filter(msg => msg.id !== tempId));
+        setMessageIds(prevIds => {
+          prevIds.delete(tempId);
+          return prevIds;
+        });
+      }
+    }
+  };
+
   const loadOlderMessages = async () => {
     if (loadingOlderMessages || !moreAvailable) return;
   
@@ -170,6 +211,18 @@ const ChatMessages = ({ route, navigation }) => {
         loadingOlderMessages ? <Text>Loading...</Text> : null
       }
     />
+    <View style={styles.inputContainer}>
+        <TextInput
+        style={styles.input}
+        value={inputText}
+        onChangeText={setInputText}
+        placeholder="Type a message..."
+        placeholderTextColor="#888" 
+      />
+        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+          <Text style={styles.sendButtonText}>SEND</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
@@ -254,8 +307,33 @@ const styles = StyleSheet.create({
     textAlign: 'left',
     maxWidth: 200, 
     marginHorizontal: 10, 
-},
-
+  },
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: 'lightgrey',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#f0f0f0',
+    marginRight: 10,
+    borderRadius: 20, 
+    fontSize: 14,
+  },
+  sendButton: {
+    padding: 10,
+    backgroundColor: 'skyblue', 
+    borderRadius: 20, 
+  },
+  sendButtonText: {
+    color: 'white', 
+    fontSize: 16,
+  }
 });
 
 
