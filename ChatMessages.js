@@ -6,7 +6,8 @@ import {
   renderImageMessage,
   renderVideoMessage,
   renderMediaShare,
-  renderLinkMessage
+  renderLinkMessage,
+  renderClipMessage
 } from './Renderer'; 
 
 const ChatMessages = ({ route, navigation }) => {
@@ -53,10 +54,10 @@ const ChatMessages = ({ route, navigation }) => {
     setLoadingNewMessages(false);
   };
   
-  useEffect(() => {
-    const intervalId = setInterval(fetchNewMessages, 10000); 
-    return () => clearInterval(intervalId); 
-  }, [fetchNewMessages]);
+  // useEffect(() => {
+  //  const intervalId = setInterval(fetchNewMessages, 10000); // poll every 10 sec
+  //  return () => clearInterval(intervalId); 
+  //}, [fetchNewMessages]);
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {
@@ -80,30 +81,30 @@ const ChatMessages = ({ route, navigation }) => {
         item_type: 'text'
       };
   
-      setMessages(currentMessages => [newMessage, ...currentMessages]);
-      setMessageIds(prevIds => new Set(prevIds.add(tempId)));
+    setMessages(currentMessages => [newMessage, ...currentMessages]);
+    setMessageIds(prevIds => new Set(prevIds.add(tempId)));
   
-      try {
-        const response = await axios.post(`http://10.0.2.2:8000/chats/${chatList.thread_id}/send_message`, {
-          message: inputText
-        });
+    try {
+      const response = await axios.post(`http://10.0.2.2:8000/chats/${chatList.thread_id}/send_message`, {
+        message: inputText
+      });
+
+      const { messageId } = response.data; 
+      setMessages(currentMessages =>
+        currentMessages.map(msg => msg.id === tempId ? { ...msg, id: messageId } : msg)
+      );
+      setMessageIds(prevIds => {
+        prevIds.delete(tempId);
+        return new Set(prevIds.add(messageId));
+      });
   
-        const { messageId } = response.data; 
-        setMessages(currentMessages =>
-          currentMessages.map(msg => msg.id === tempId ? { ...msg, id: messageId } : msg)
-        );
-        setMessageIds(prevIds => {
-          prevIds.delete(tempId);
-          return new Set(prevIds.add(messageId));
-        });
-  
-        setInputText('');
-      } catch (error) {
-        console.error('Error sending message:', error);
-        setMessages(currentMessages => currentMessages.filter(msg => msg.id !== tempId));
-        setMessageIds(prevIds => {
-          prevIds.delete(tempId);
-          return prevIds;
+      setInputText('');
+    } catch (error) {
+      console.error('Error sending message:', error);
+      setMessages(currentMessages => currentMessages.filter(msg => msg.id !== tempId));
+      setMessageIds(prevIds => {
+        prevIds.delete(tempId);
+        return prevIds;
         });
       }
     }
@@ -127,6 +128,7 @@ const ChatMessages = ({ route, navigation }) => {
       setMessages(prevMessages => [...prevMessages, ...filteredMessages]);
       setMessageIds(newMessageIds);
     }
+
     setCursor(result.cursor);
     setLoadingOlderMessages(false);
   };
@@ -134,7 +136,6 @@ const ChatMessages = ({ route, navigation }) => {
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
     const profilePicUrl = isSender ? senderPic : receiverPic;
-
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const isFirstFromSender = !prevMessage || prevMessage.is_sent_by_viewer !== isSender;
 
@@ -148,15 +149,20 @@ const ChatMessages = ({ route, navigation }) => {
         const hasVideo = item.media && item.media.video_versions;
         if (hasVideo) {
           const bestVideo = item.media.video_versions[0];
-          messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height);
+          messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height, navigation);
         } else {
           let bestImg = item.media.image_versions2.candidates.reduce((prev, curr) => (prev.height > curr.height) ? prev : curr);
-          messageContent = renderImageMessage(bestImg.url, profilePicUrl, isSender, bestImg.width, bestImg.height);
+          messageContent = renderImageMessage(bestImg.url, profilePicUrl, isSender, bestImg.width, bestImg.height, navigation);
         }
         break;
 
       case 'media_share':
-        messageContent = renderMediaShare(item.media_share, profilePicUrl, isSender);
+        messageContent = renderMediaShare(item.media_share, profilePicUrl, isSender, navigation);
+        break;
+      
+      case 'clip':
+        console.log(item.clip.clip)
+        messageContent = renderMediaShare(item.clip.clip, profilePicUrl, isSender, navigation)
         break;
 
       default:
@@ -216,7 +222,7 @@ const ChatMessages = ({ route, navigation }) => {
         style={styles.input}
         value={inputText}
         onChangeText={setInputText}
-        placeholder="Type a message..."
+        placeholder="Message..."
         placeholderTextColor="#888" 
       />
         <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
@@ -271,19 +277,6 @@ const styles = StyleSheet.create({
     height: 1,           
     backgroundColor: 'gray', 
     width: '100%',     
-  },
-  messageBox: {
-    borderRadius: 10,
-    padding: 10,
-    maxWidth: '70%',
-  },
-  senderMessageBox: {
-    backgroundColor: 'skyblue',
-  },
-  receiverMessageBox: {
-    backgroundColor: 'gray',
-    borderWidth: 1,
-    borderColor: 'lightgray',
   },
   messageText: {
     fontSize: 16,

@@ -1,73 +1,57 @@
-import React, { useState } from 'react';
-import { Modal, View, Image, TouchableOpacity, Text, StyleSheet } from 'react-native';
+import React from 'react';
+import { View, Image, StyleSheet, Dimensions, Text, TouchableOpacity } from 'react-native';
 import { Video } from 'expo-av';
-import Swiper from 'react-native-swiper'; 
 
-export const MediaViewer = ({ mediaItems, visible, onClose }) => {
-    return (
-        <Modal
-            animationType="fade"
-            transparent={true}
-            visible={visible}
-            onRequestClose={onClose}
-        >
-            <View style={styles.viewerContainer}>
-                <Swiper showsButtons={true} loop={false}>
-                    {mediaItems.map((media, index) => (
-                        <View key={index} style={styles.mediaContent}>
-                            {media.type === 'image' ? (
-                                <Image
-                                    style={styles.fullMedia}
-                                    source={{ uri: media.url }}
-                                    resizeMode="contain"
-                                />
-                            ) : (
-                                <Video
-                                    source={{ uri: media.url }}
-                                    style={styles.fullMedia}
-                                    resizeMode="contain"
-                                    shouldPlay
-                                    isLooping
-                                    useNativeControls
-                                />
-                            )}
-                        </View>
-                    ))}
-                </Swiper>
-                <TouchableOpacity style={styles.closeButton} onPress={onClose}>
-                    <Text style={styles.closeText}>Close</Text>
-                </TouchableOpacity>
-            </View>
-        </Modal>
-    );
+const MediaViewer = ({ route, navigation }) => {
+  const { mediaType, mediaUrl } = route.params;
+
+  return (
+    <View style={styles.container}>
+      {mediaType === 'image' ? (
+        <Image source={{ uri: mediaUrl }} style={styles.media} />
+      ) : (
+        <Video
+          source={{ uri: mediaUrl }}
+          style={styles.media}
+          resizeMode="contain"
+          shouldPlay={true}
+          isLooping
+          useNativeControls
+        />
+      )}
+      <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+          <Image
+            source={require('./assets/back_arrow.png')}
+            style={{ width: 20, height: 20 }}
+          />
+        </TouchableOpacity>
+    </View>
+  );
 };
 
 const styles = StyleSheet.create({
-    viewerContainer: {
-        flex: 1,
-        backgroundColor: 'rgba(0, 0, 0, 0.9)',
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    mediaContent: {
-        flex: 1,
-        justifyContent: 'center',
-        alignItems: 'center',
-    },
-    fullMedia: {
-        width: '100%',
-        height: '80%',
-    },
-    closeButton: {
-        position: 'absolute',
-        top: 20,
-        right: 20,
-        padding: 10,
-        backgroundColor: 'rgba(255, 255, 255, 0.8)',
-        borderRadius: 20,
-    },
-    closeText: {
-        fontSize: 16,
-        color: '#000',
-    },
+  container: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'black',
+  },
+  media: {
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
+  },
+  closeButton: {
+    position: 'absolute',
+    top: 40,
+    left: 20,
+    padding: 10,
+    backgroundColor: 'rgba(255, 255, 255, 0.8)',
+    borderRadius: 20,
+  },
+  closeText: {
+    color: 'black',
+    fontSize: 16,
+  },
 });
+
+export default MediaViewer;
