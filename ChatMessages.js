@@ -161,7 +161,6 @@ const ChatMessages = ({ route, navigation }) => {
         break;
       
       case 'clip':
-        console.log(item.clip.clip)
         messageContent = renderMediaShare(item.clip.clip, profilePicUrl, isSender, navigation)
         break;
 

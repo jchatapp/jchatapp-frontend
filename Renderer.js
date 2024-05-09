@@ -50,13 +50,7 @@ export const renderVideoMessage = (url, profilePicUrl, isSender, width, height) 
 
 export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
   const openMediaViewer = () => {
-    let mediaType = post.product_type == "clip" ? 'image' : 'video';
-    let mediaUrl = post.image_versions2 ? post.image_versions2.candidates[0].url : post.video_versions[0].url;
-    if (post.product_type == "clips") {
-      mediaType = "video"
-      mediaUrl = post.video_versions[0].url
-    }
-    navigation.navigate('MediaViewer', { mediaType, mediaUrl  });
+    navigation.navigate('MediaViewer', { post });
   };
   
   if (post.carousel_media && post.carousel_media.length) {
