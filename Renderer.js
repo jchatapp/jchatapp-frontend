@@ -52,6 +52,10 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
   const openMediaViewer = () => {
     navigation.navigate('MediaViewer', { post });
   };
+
+  const openCarouselViewer = () => {
+    navigation.navigate('Carousel', { post });
+  }
   
   if (post.carousel_media && post.carousel_media.length) {
       const firstMediaUrl = post.carousel_media[0].image_versions2 ? 
@@ -60,15 +64,24 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
       const firstMediaCaption = post.caption.text;
 
       return (
-          <View style={{ alignItems: 'center' }}>
-              <TouchableOpacity onPress={openMediaViewer}>
+          <View style={styles.postbin}>
+            <View style={styles.userInfoBin}>
+            <Image
+              source={{ uri: post.user.profile_pic_url }}
+              style={{ width: 20, aspectRatio: 1, borderRadius: 10 }}
+            />
+            <Text style={styles.usernameStyle}>
+                      {post.user.username}
+                  </Text> 
+                  </View>
+              <TouchableOpacity onPress={openCarouselViewer}>
                   <Image
                       source={{ uri: firstMediaUrl }}
                       style={{ width: 200, aspectRatio: 1, borderRadius: 10, margin: 5 }}
                   />
               </TouchableOpacity>
               {firstMediaCaption ? 
-                  <Text style={styles.captionStyle} numberOfLines={2} ellipsizeMode="tail">
+                  <Text style={styles.captionStyle} numberOfLines={1} ellipsizeMode="tail">
                       {firstMediaCaption}
                   </Text> 
               : null}
@@ -79,15 +92,24 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
       const mediaCaption = post.caption ? post.caption.text : '';
 
     return (
-        <View style={{ alignItems: 'center' }}>
+      <View style={styles.postbin}>
+      <View style={styles.userInfoBin}>
+          <Image
+            source={{ uri: post.user.profile_pic_url }}
+            style={{ width: 20, aspectRatio: 1, borderRadius: 10 }}
+          />
+          <Text style={styles.usernameStyle}>
+                    {post.user.username}
+                </Text> 
+                </View>
             <TouchableOpacity onPress={openMediaViewer}>
                 <Image
                     source={{ uri: mediaUrl }}
-                    style={{ width: 200, aspectRatio: 1, borderRadius: 10 }}
+                    style={{ width: 200, aspectRatio: 1, borderRadius: 10, margin: 5 }}
                 />
             </TouchableOpacity>
             {mediaCaption ? 
-                <Text style={styles.captionStyle} numberOfLines={2} ellipsizeMode="tail">
+                <Text style={styles.captionStyle} numberOfLines={1} ellipsizeMode="tail">
                     {mediaCaption}
                 </Text> 
             : null}
@@ -128,11 +150,31 @@ export const renderClipMessage = (clip, profilePicUrl, isSender) => (
 
 
   const styles = StyleSheet.create({
+    userInfoBin: {
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      width: "100%",
+      padding: 3,
+      marginLeft: 7,
+      marginTop: 3
+    },
+    usernameStyle: {
+      color: 'white',  
+      fontSize: 10, 
+      textAlign: 'left',
+      margin: 3,
+      paddingLeft: 4
+  },
     videoContainer: {
       width: '100%',
       height: 200,  
       borderRadius: 10,
       overflow: 'hidden',
+    },
+    postbin: {
+      borderRadius: 10,
+      backgroundColor: 'gray', 
+      alignItems: 'center'
     },
     video: {
       width: '100%',
@@ -214,9 +256,10 @@ export const renderClipMessage = (clip, profilePicUrl, isSender) => (
       paddingLeft: 20,
     },
     captionStyle: {
-      color: 'gray',  
-      fontSize: 12, 
+      color: 'white',  
+      fontSize: 10, 
       textAlign: 'left',
       maxWidth: 200, 
+      marginBottom: 7
   },
   });

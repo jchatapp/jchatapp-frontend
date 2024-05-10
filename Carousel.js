@@ -1,37 +1,38 @@
 import React from 'react';
-import { View, Image, StyleSheet, Text, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Image, StyleSheet, Text, Dimensions, TouchableOpacity, ScrollView } from 'react-native';
 import { Video } from 'expo-av';
+import Swiper from 'react-native-swiper';
 
-const MediaViewer = ({ route, navigation }) => {
-  const { post } = route.params;  
-  let caption = (post.caption && post.caption.text) ? post.caption.text : "";
-  let mediaType = post.product_type == "clip" ? 'image' : 'video';
-  let mediaUrl = post.image_versions2 ? post.image_versions2.candidates[0].url : post.video_versions[0].url;
-  if (post.product_type == "clips") {
-    mediaType = "video"
-    mediaUrl = post.video_versions[0].url
-  }
-
-  if (post.product_type == "feed") {
-    mediaType = "image"
-    mediaUrl = post.image_versions2.candidates[0].url
-  }
-
+const Carousel = ({ route, navigation }) => {
+  const { post } = route.params;
+  const caption = post.caption?.text || "";
+  console.log(post.carousel_media[0].media_type)
+  console.log(post.carousel_media[1].media_type)
+  
   return (
     <View style={styles.container}>
-      <TouchableOpacity style={styles.fullScreenContainer}>
-        {mediaType === 'image' ? (
-          <Image source={{ uri: mediaUrl }} style={styles.fullScreenMedia} />
-        ) : (
-          <Video
-            source={{ uri: mediaUrl }}
-            style={styles.fullScreenMedia}
-            resizeMode="cover"
-            shouldPlay={true}
-            isLooping
-          />
-        )}
-      </TouchableOpacity>
+      <Swiper style={styles.wrapper} 
+            showsButtons={true} 
+            loop={false}>
+        {post.carousel_media.map((media, index) => (
+          media.media_type === 2 ? (
+            <Video
+              source={{ uri: media.video_versions[0].url }}
+              style={styles.fullScreenMedia}
+              resizeMode="contain"
+              shouldPlay={true}
+              isLooping
+            />
+          ) : (
+            <Image
+              key={index}
+              resizeMode="contain"
+              source={{ uri: media.image_versions2.candidates[0].url }}
+              style={styles.fullScreenMedia}
+            />
+          )
+        ))}
+      </Swiper>
       <View style={styles.overlayContainer}>
         <View style={styles.userInfoContainer}>
           <Image source={{ uri: post.user.profile_pic_url }} style={styles.profilePic} />
@@ -48,6 +49,7 @@ const MediaViewer = ({ route, navigation }) => {
         />
       </TouchableOpacity>
     </View>
+    
   );
 };
 
@@ -58,16 +60,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     backgroundColor: 'black',
   },
-  fullScreenContainer: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    width: '100%',
-    height: '100%',
-  },
   fullScreenMedia: {
-    width: '100%',
-    height: '100%',
+    flex: 1
   },
   overlayContainer: {
     position: 'absolute',
@@ -92,16 +86,10 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     color: 'white',
   },
-  captionContainer: {
-    maxHeight: 100,  
-    width: '100%',
-  },
-  captionContent: {
-    flexGrow: 1,
-  },
   caption: {
     fontSize: 14,
     color: 'white',
+    marginTop: 5,
   },
   closeButton: {
     position: 'absolute',
@@ -114,7 +102,7 @@ const styles = StyleSheet.create({
   closeIcon: {
     width: 20,
     height: 20,
-  },
+  }
 });
 
-export default MediaViewer;
+export default Carousel;

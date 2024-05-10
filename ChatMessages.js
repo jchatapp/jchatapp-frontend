@@ -53,11 +53,6 @@ const ChatMessages = ({ route, navigation }) => {
     }
     setLoadingNewMessages(false);
   };
-  
-  // useEffect(() => {
-  //  const intervalId = setInterval(fetchNewMessages, 10000); // poll every 10 sec
-  //  return () => clearInterval(intervalId); 
-  //}, [fetchNewMessages]);
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {

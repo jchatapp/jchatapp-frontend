@@ -20,6 +20,7 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const handlePressChatItem = async (item) => {
+    console.log(item.read_state)
     item.read_state = 0;
     const chatMessages = await fetchChatMessages(item.thread_id);
     if (chatMessages) {
