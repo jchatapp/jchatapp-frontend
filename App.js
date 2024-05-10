@@ -6,6 +6,7 @@ import ChatListScreen from './ChatListScreen';
 import Chat from './ChatMessages'; 
 import MediaViewer from "./MediaViewer"
 import Carousel from "./Carousel"
+import StoryViewer from "./StoryViewer"
 
 const Stack = createStackNavigator();
 
@@ -18,6 +19,7 @@ function App() {
         <Stack.Screen name="ChatMessages" component={Chat} options={{ headerShown: false }}/>
         <Stack.Screen name="MediaViewer" component={MediaViewer} options={{ headerShown: false }}/>
         <Stack.Screen name="Carousel" component={Carousel} options={{ headerShown: false }}/>
+        <Stack.Screen name="StoryViewer" component={StoryViewer} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

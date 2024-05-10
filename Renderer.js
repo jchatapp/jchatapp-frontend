@@ -56,7 +56,9 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
   const openCarouselViewer = () => {
     navigation.navigate('Carousel', { post });
   }
-  
+
+  const backgroundColor = isSender ? 'skyblue' : 'gray';
+
   if (post.carousel_media && post.carousel_media.length) {
       const firstMediaUrl = post.carousel_media[0].image_versions2 ? 
                             post.carousel_media[0].image_versions2.candidates[0].url :
@@ -64,7 +66,7 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
       const firstMediaCaption = post.caption.text;
 
       return (
-          <View style={styles.postbin}>
+          <View style={[styles.postbin, { backgroundColor }]}>
             <View style={styles.userInfoBin}>
             <Image
               source={{ uri: post.user.profile_pic_url }}
@@ -92,7 +94,7 @@ export const renderMediaShare = (post, profilePicUrl, isSender, navigation) => {
       const mediaCaption = post.caption ? post.caption.text : '';
 
     return (
-      <View style={styles.postbin}>
+      <View style={[styles.postbin, { backgroundColor }]}>
       <View style={styles.userInfoBin}>
           <Image
             source={{ uri: post.user.profile_pic_url }}
@@ -132,24 +134,58 @@ export const renderLinkMessage = (item, profilePicUrl, isSender) => (
     </View>
   );
 
+  export const renderStoryShare = (story, profilePicUrl1, isSender, navigation) => {
+    let imageUrl = story.media.image_versions2.candidates[0].url;
+    let username = story.media.user.username;
+    let profilePicUrl = story.media.user.profile_pic_url;
 
-export const renderClipMessage = (clip, profilePicUrl, isSender) => (
-  <View style={styles.videoContainer}>
-    <Video
-      source={{ uri: clip.video_versions[0].url }}  
-      style={styles.video}
-      resizeMode="cover"
-      shouldPlay
-      isLooping
-    />
-    <View style={styles.overlayText}>
-      <Text style={styles.username}>{clip.username}</Text>
-    </View>
-  </View>
-  );
+    const openMediaViewer = () => {
+      navigation.navigate('StoryViewer', { story });
+    };
+
+    return (
+        <TouchableOpacity onPress={openMediaViewer} style={styles.storyContainer}>
+            <Image source={{ uri: imageUrl }} style={styles.backgroundImage} />
+            <View style={styles.storyOverlay}>
+                <Image
+                    source={{ uri: profilePicUrl }}
+                    style={styles.storyprofilePic}
+                />
+                <Text style={styles.username}>{username}</Text>
+            </View>
+        </TouchableOpacity>
+    );
+};
 
 
   const styles = StyleSheet.create({
+    storyContainer: {
+      width: 150,
+      height: 250,
+      borderRadius: 10,
+      overflow: 'hidden',
+      marginVertical: 10,  
+      borderWidth: 1,
+  },
+  backgroundImage: {
+      width: '100%',
+      height: '100%',
+      position: 'absolute',
+  },
+  storyOverlay: {
+      flexDirection: 'row',
+      flex: 1,
+      justifyContent: 'flex-start',
+      alignItems: 'flex-start',
+      padding: 10,
+      backgroundColor: 'rgba(0, 0, 0, 0.3)'  
+  },
+  storyprofilePic: {
+    width: 20,
+    height: 20,
+    borderRadius: 15, 
+    marginRight: 5,
+  },
     userInfoBin: {
       flexDirection: 'row',
       justifyContent: 'flex-start',
@@ -173,7 +209,6 @@ export const renderClipMessage = (clip, profilePicUrl, isSender) => (
     },
     postbin: {
       borderRadius: 10,
-      backgroundColor: 'gray', 
       alignItems: 'center'
     },
     video: {
@@ -186,8 +221,9 @@ export const renderClipMessage = (clip, profilePicUrl, isSender) => (
       left: 10,
     },
     username: {
+      margin: 2,
       color: 'white',
-      fontSize: 16,
+      fontSize: 10,
       fontWeight: 'bold',
     },
     header: {
@@ -256,9 +292,11 @@ export const renderClipMessage = (clip, profilePicUrl, isSender) => (
       paddingLeft: 20,
     },
     captionStyle: {
-      color: 'white',  
+      color: 'white', 
+      flexDirection: 'row',
+      justifyContent: 'flex-start',
+      width: "100%",
       fontSize: 10, 
-      textAlign: 'left',
       maxWidth: 200, 
       marginBottom: 7
   },

@@ -7,11 +7,12 @@ import {
   renderVideoMessage,
   renderMediaShare,
   renderLinkMessage,
-  renderClipMessage
+  renderStoryShare
 } from './Renderer'; 
 
 const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
+  //console.log(chatList.items[2].story_share.media.image_versions2.candidates[0])
   const senderPic = chatList.inviter.profile_pic_url;
   const receiverPic = chatList.users[0].profile_pic_url;
   const receiverName = chatList.users[0].full_name;
@@ -158,7 +159,11 @@ const ChatMessages = ({ route, navigation }) => {
       case 'clip':
         messageContent = renderMediaShare(item.clip.clip, profilePicUrl, isSender, navigation)
         break;
-
+      
+      case 'story_share':
+        messageContent = renderStoryShare(item.story_share, profilePicUrl, isSender, navigation)
+        break;
+        
       default:
         messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
         break;

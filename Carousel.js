@@ -6,8 +6,6 @@ import Swiper from 'react-native-swiper';
 const Carousel = ({ route, navigation }) => {
   const { post } = route.params;
   const caption = post.caption?.text || "";
-  console.log(post.carousel_media[0].media_type)
-  console.log(post.carousel_media[1].media_type)
   
   return (
     <View style={styles.container}>
