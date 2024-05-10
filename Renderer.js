@@ -16,35 +16,59 @@ export const renderTextMessage = (item, profilePicUrl, isSender) => (
     </View>
   );
   
-export const renderImageMessage = (url, profilePicUrl, isSender, width, height) => {
+export const renderImageMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
     const maxWidth = 200;
     const scale = width > maxWidth ? maxWidth / width : 1;
     const scaledWidth = width * scale;
     const scaledHeight = height * scale;
+
+    const openFullScreen = () => {
+      navigation.navigate('ImageViewer', { imageUrl: url });
+    };
+
   
     return (
+    <TouchableOpacity onPress={openFullScreen}>
       <Image
         source={{ uri: url }}
         style={{ width: scaledWidth, height: scaledHeight, borderRadius: 10 }}
       />
+    </TouchableOpacity>
     );
   };
 
-export const renderVideoMessage = (url, profilePicUrl, isSender, width, height) => {
+export const renderVideoMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
   const maxWidth = 200; 
   const scale = width > maxWidth ? maxWidth / width : 1; 
   const scaledWidth = width * scale; 
   const scaledHeight = height * scale; 
 
+  const openFullScreenVideo = () => {
+    navigation.navigate('VideoViewer', { videoUrl: url });
+  };
+
   return (
+    <TouchableOpacity
+    onPress={openFullScreenVideo}
+    style={{
+      borderRadius: 10,
+      overflow: 'hidden', 
+      borderColor: 'black',
+      borderWidth: 1
+    }}
+  >
     <Video
       source={{ uri: url }}
-      style={{ width: scaledWidth, height: scaledHeight }} 
+      style={{ width: scaledWidth, height: scaledHeight }}
       resizeMode="contain"
       shouldPlay={false}
-      isLooping
-      useNativeControls
+      useNativeControls={false}
     />
+    <Image
+        source={require('./assets/play.png')}
+        style={styles.playIcon}
+      />
+  </TouchableOpacity>
   );
 };
 
@@ -157,15 +181,64 @@ export const renderLinkMessage = (item, profilePicUrl, isSender) => (
     );
 };
 
+export const renderAnimatedMedia = (url) => (
+  <View style={styles.animatedContainer}>
+    <Image
+      source={{ uri: url }}
+      style={{
+        width: '100%',   
+        height: '100%'
+      }}
+      resizeMode="contain"
+    />
+  </View>
+);
 
-  const styles = StyleSheet.create({
-    storyContainer: {
-      width: 150,
-      height: 250,
-      borderRadius: 10,
-      overflow: 'hidden',
-      marginVertical: 10,  
-      borderWidth: 1,
+export const renderRavenMedia = (item, isSender, navigation) => {
+  if (item.visual_media.media.image_versions2) {
+    const { media } = item.visual_media;
+    if (media.media_type === 1) { 
+      return (
+        <TouchableOpacity 
+          onPress={() => console.log('Image')}
+          style={[styles.ravenMediaContainer, { backgroundColor: isSender ? 'blue' : '#666' }]}>
+          <Image
+            source={require('./assets/play.png')}
+            style={styles.ravenPlayIcon}
+          />
+          <Text style={styles.ravenMediaText}>Photo</Text>
+        </TouchableOpacity>
+      );
+    } else { 
+      return (
+        <TouchableOpacity 
+          onPress={() => console.log('Video')}
+          style={[styles.ravenMediaContainer, { backgroundColor: isSender ? 'skyblue' : '#666' }]}>
+          <Image
+            source={require('./assets/play.png')}
+            style={styles.ravenPlayIcon}
+          />
+          <Text style={styles.ravenMediaText}>Video</Text>
+        </TouchableOpacity>
+      );
+    }
+  } else {
+    return (
+      <View style={[styles.ravenMediaContainer, { backgroundColor: 'rgba(102, 102, 102, 0.5)' }]}>
+        <Text style={styles.ravenMediaText}>Unavailable</Text>
+      </View>
+    );
+  }
+};
+
+const styles = StyleSheet.create({
+  storyContainer: {
+    width: 150,
+    height: 250,
+    borderRadius: 10,
+    overflow: 'hidden',
+    marginVertical: 10,  
+    borderWidth: 1,
   },
   backgroundImage: {
       width: '100%',
@@ -186,118 +259,155 @@ export const renderLinkMessage = (item, profilePicUrl, isSender) => (
     borderRadius: 15, 
     marginRight: 5,
   },
-    userInfoBin: {
-      flexDirection: 'row',
-      justifyContent: 'flex-start',
-      width: "100%",
-      padding: 3,
-      marginLeft: 7,
-      marginTop: 3
-    },
-    usernameStyle: {
-      color: 'white',  
-      fontSize: 10, 
-      textAlign: 'left',
-      margin: 3,
-      paddingLeft: 4
+  userInfoBin: {
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    width: "100%",
+    padding: 3,
+    marginLeft: 7,
+    marginTop: 3
   },
-    videoContainer: {
-      width: '100%',
-      height: 200,  
-      borderRadius: 10,
-      overflow: 'hidden',
-    },
-    postbin: {
-      borderRadius: 10,
-      alignItems: 'center'
-    },
-    video: {
-      width: '100%',
-      height: '100%',
-    },
-    overlayText: {
-      position: 'absolute',
-      bottom: 10,
-      left: 10,
-    },
-    username: {
-      margin: 2,
-      color: 'white',
-      fontSize: 10,
-      fontWeight: 'bold',
-    },
-    header: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      padding: 5,
-      paddingTop: 30
-    },
-    backButton: {
-      padding: 10,
-      justifyContent: 'center', 
-      alignItems: 'center',
-      width: 44, 
-      height: 44,
-    },
-    messageContainer: {
-      flexDirection: 'row',
-      padding: 10,
-      marginVertical: 4,
-    },
-    senderContainer: {
-      justifyContent: 'flex-end',
-    },
-    receiverContainer: {
-      justifyContent: 'flex-start',
-    },
-    profileImage: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      marginLeft: 5,
-      marginRight: 5,
-    },
-    separatorLine: {
-      height: 1,           
-      backgroundColor: 'gray', 
-      width: '100%',     
-    },
-    messageBox: {
-      borderRadius: 10,
-      padding: 10,
-      maxWidth: '70%',
-    },
-    senderMessageBox: {
-      backgroundColor: 'skyblue',
-    },
-    receiverMessageBox: {
-      backgroundColor: 'gray',
-      borderWidth: 1,
-      borderColor: 'lightgray',
-    },
-    messageText: {
-      fontSize: 16,
-    },
-    textWhite: {
-      color: 'white',
-    },
-    textBlack: {
-      color: 'white',
-    },
-    container: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      width: '50%',
-      backgroundColor: 'gray',
-      paddingLeft: 20,
-    },
-    captionStyle: {
-      color: 'white', 
-      flexDirection: 'row',
-      justifyContent: 'flex-start',
-      width: "100%",
-      fontSize: 10, 
-      maxWidth: 200, 
-      marginBottom: 7
+  usernameStyle: {
+    color: 'white',  
+    fontSize: 10, 
+    textAlign: 'left',
+    margin: 3,
+    paddingLeft: 4
+},
+  videoContainer: {
+    width: '100%',
+    height: 200,  
+    borderRadius: 10,
+    overflow: 'hidden',
   },
+  postbin: {
+    borderRadius: 10,
+    alignItems: 'center'
+  },
+  video: {
+    width: '100%',
+    height: '100%',
+  },
+  overlayText: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+  },
+  username: {
+    margin: 2,
+    color: 'white',
+    fontSize: 10,
+    fontWeight: 'bold',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 5,
+    paddingTop: 30
+  },
+  backButton: {
+    padding: 10,
+    justifyContent: 'center', 
+    alignItems: 'center',
+    width: 44, 
+    height: 44,
+  },
+  messageContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    marginVertical: 4,
+  },
+  senderContainer: {
+    justifyContent: 'flex-end',
+  },
+  receiverContainer: {
+    justifyContent: 'flex-start',
+  },
+  profileImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    marginLeft: 5,
+    marginRight: 5,
+  },
+  separatorLine: {
+    height: 1,           
+    backgroundColor: 'gray', 
+    width: '100%',     
+  },
+  messageBox: {
+    borderRadius: 10,
+    padding: 10,
+    maxWidth: '70%',
+  },
+  senderMessageBox: {
+    backgroundColor: 'skyblue',
+  },
+  receiverMessageBox: {
+    backgroundColor: 'gray',
+    borderWidth: 1,
+    borderColor: 'lightgray',
+  },
+  messageText: {
+    fontSize: 16,
+  },
+  textWhite: {
+    color: 'white',
+  },
+  textBlack: {
+    color: 'white',
+  },
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    width: '50%',
+    backgroundColor: 'gray',
+    paddingLeft: 20,
+  },
+  captionStyle: {
+    color: 'white', 
+    flexDirection: 'row',
+    justifyContent: 'flex-start',
+    width: "100%",
+    fontSize: 10, 
+    maxWidth: 200, 
+    marginBottom: 7
+  },
+  playIcon: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    width: 30,
+    height: 30,
+    resizeMode: 'contain'
+  },
+  animatedContainer: {
+    width: 120, 
+    height: 120,     
+    alignItems: 'flex-start',  
+    borderRadius: 10
+  },
+  ravenMediaContainer: {
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    padding: 10, 
+    backgroundColor: '#f0f0f0', 
+    borderRadius: 10
+  },
+  playIcon: {
+    width: 20,
+    height: 20,
+    position: 'absolute',
+    top: 15,
+    right: 15,
+  },
+  ravenPlayIcon: {
+    width: 15,
+    height: 15,
+    marginRight: 10,
+  },
+  ravenMediaText: {
+    fontSize: 14, 
+    color: 'white', 
+  }
   });

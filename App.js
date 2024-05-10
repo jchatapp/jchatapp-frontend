@@ -7,6 +7,8 @@ import Chat from './ChatMessages';
 import MediaViewer from "./MediaViewer"
 import Carousel from "./Carousel"
 import StoryViewer from "./StoryViewer"
+import VideoViewer from "./VideoViewer"
+import ImageViewer from "./ImageViewer"
 
 const Stack = createStackNavigator();
 
@@ -20,6 +22,8 @@ function App() {
         <Stack.Screen name="MediaViewer" component={MediaViewer} options={{ headerShown: false }}/>
         <Stack.Screen name="Carousel" component={Carousel} options={{ headerShown: false }}/>
         <Stack.Screen name="StoryViewer" component={StoryViewer} options={{ headerShown: false }}/>
+        <Stack.Screen name="ImageViewer" component={ImageViewer} options={{ headerShown: false }}/>
+        <Stack.Screen name="VideoViewer" component={VideoViewer} options={{ headerShown: false }}/>
       </Stack.Navigator>
     </NavigationContainer>
   );

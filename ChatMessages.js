@@ -7,12 +7,13 @@ import {
   renderVideoMessage,
   renderMediaShare,
   renderLinkMessage,
-  renderStoryShare
+  renderStoryShare,
+  renderAnimatedMedia,
+  renderRavenMedia
 } from './Renderer'; 
 
 const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
-  //console.log(chatList.items[2].story_share.media.image_versions2.candidates[0])
   const senderPic = chatList.inviter.profile_pic_url;
   const receiverPic = chatList.users[0].profile_pic_url;
   const receiverName = chatList.users[0].full_name;
@@ -161,7 +162,23 @@ const ChatMessages = ({ route, navigation }) => {
         break;
       
       case 'story_share':
-        messageContent = renderStoryShare(item.story_share, profilePicUrl, isSender, navigation)
+        if (item.story_share.is_linked == false) {
+          messageContent = <View style={styles.expiredStoryContainer}>
+                  <Text style={styles.expiredStoryTitle}>{item.story_share.title}</Text>
+                  <Text style={styles.expiredStoryMessage}>{item.story_share.message}</Text>
+                </View>
+        }
+        else {
+          messageContent = renderStoryShare(item.story_share, profilePicUrl, isSender, navigation)
+        }
+        break;
+
+      case 'animated_media':
+        messageContent = renderAnimatedMedia(item.animated_media.images.fixed_height.url)
+        break;
+      
+      case 'raven_media':
+        messageContent = renderRavenMedia(item, isSender, navigation)
         break;
         
       default:
@@ -233,6 +250,23 @@ const ChatMessages = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  expiredStoryContainer: {
+    padding: 10,
+    backgroundColor: '#f0f0f0', 
+    borderRadius: 5,
+    marginVertical: 5,
+    alignItems: 'left',
+    justifyContent: 'center'
+  },
+  expiredStoryTitle: {
+    fontSize: 16,
+    color: '#000', 
+    fontWeight: 'bold'
+  },
+  expiredStoryMessage: {
+    fontSize: 14,
+    color: '#666'
+  },
   profileImagePlaceholder: {
     width: 40,
     height: 40,
