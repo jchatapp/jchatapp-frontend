@@ -200,7 +200,7 @@ export const renderRavenMedia = (item, isSender, navigation) => {
     if (media.media_type === 1) { 
       return (
         <TouchableOpacity 
-          onPress={() => console.log('Image')}
+          onPress={() =>  navigation.navigate('ImageViewer', { imageUrl: item.visual_media.media.image_versions2.candidates[0].url })}
           style={[styles.ravenMediaContainer, { backgroundColor: isSender ? 'blue' : '#666' }]}>
           <Image
             source={require('./assets/play.png')}
@@ -212,7 +212,7 @@ export const renderRavenMedia = (item, isSender, navigation) => {
     } else { 
       return (
         <TouchableOpacity 
-          onPress={() => console.log('Video')}
+          onPress={() =>  navigation.navigate('VideoViewer', { videoUrl: item.visual_media.media.video_versions[0].url })}
           style={[styles.ravenMediaContainer, { backgroundColor: isSender ? 'skyblue' : '#666' }]}>
           <Image
             source={require('./assets/play.png')}
