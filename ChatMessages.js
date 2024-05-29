@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, Button, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import axios from 'axios';
 import {
   renderTextMessage,
@@ -40,21 +40,32 @@ const ChatMessages = ({ route, navigation }) => {
       });
       if (response.data && response.data.messages.length > 0) {
         setMessages(currentMessages => {
-          const newUniqueMessages = response.data.messages.filter(msg => !messageIds.has(msg.item_id) && !msg.is_sent_by_viewer);
+          const newUniqueMessages = response.data.messages.filter(msg => 
+            !messageIds.has(msg.item_id) && !msg.is_sent_by_viewer 
+          );
+  
           newUniqueMessages.forEach(msg => messageIds.add(msg.item_id));
   
           const updatedMessages = [...newUniqueMessages, ...currentMessages];
-          if (newUniqueMessages.length > 0) {
-            setLastTimestamp(newUniqueMessages[0].timestamp); 
-          }
+          setLastTimestamp(updatedMessages[0].timestamp); 
           return updatedMessages;
         });
       }
     } catch (error) {
       console.error('Failed to fetch new messages:', error);
+      await new Promise(resolve => setTimeout(resolve, 30000)); 
     }
     setLoadingNewMessages(false);
   };
+  
+  
+  useEffect(() => {
+    const interval = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
+    const intervalId = setInterval(fetchNewMessages, interval); 
+    return () => clearInterval(intervalId); 
+  }, [fetchNewMessages]);
+  
+  
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {
@@ -180,7 +191,7 @@ const ChatMessages = ({ route, navigation }) => {
       case 'raven_media':
         messageContent = renderRavenMedia(item, isSender, navigation)
         break;
-        
+  
       default:
         messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
         break;
@@ -208,20 +219,25 @@ const ChatMessages = ({ route, navigation }) => {
 
 
   return (
-    <View style={{ flex: 1 }}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Image
-            source={require('./assets/back_arrow.png')}
-            style={{ width: 20, height: 20 }}
-          />
-        </TouchableOpacity>
-        <Image source={{ uri: receiverPic }} 
-        style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}/>
-        <Text style={styles.receiverName}>{receiverName}</Text>
-      </View>
-      <View style={styles.separatorLine}></View>
-      <FlatList
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={{ flex: 1 }}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 5 : 0} 
+    >
+      <View style={{ flex: 1 }}>
+        <View style={styles.header}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
+            <Image
+              source={require('./assets/back_arrow.png')}
+              style={{ width: 20, height: 20 }}
+            />
+          </TouchableOpacity>
+          <Image source={{ uri: receiverPic }} 
+          style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}/>
+          <Text style={styles.receiverName}>{receiverName}</Text>
+        </View>
+        <View style={styles.separatorLine}></View>
+        <FlatList
           data={messages}
           renderItem={renderItem}
           keyExtractor={item => item.id}
@@ -230,22 +246,26 @@ const ChatMessages = ({ route, navigation }) => {
           onEndReached={loadOlderMessages} 
           onEndReachedThreshold={0.1} 
           ListFooterComponent={() => 
-        loadingOlderMessages ? <Text>Loading...</Text> : null
-      }
-    />
-    <View style={styles.inputContainer}>
-        <TextInput
-        style={styles.input}
-        value={inputText}
-        onChangeText={setInputText}
-        placeholder="Message..."
-        placeholderTextColor="#888" 
-      />
-        <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-          <Text style={styles.sendButtonText}>SEND</Text>
-        </TouchableOpacity>
+            loadingOlderMessages ? 
+            <View style={[styles.containerLoad, styles.horizontalLoad]}>
+              <ActivityIndicator />
+            </View> : null
+          }
+        />
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={inputText}
+            onChangeText={setInputText}
+            placeholder="Message..."
+            placeholderTextColor="#888" 
+          />
+          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+            <Text style={styles.sendButtonText}>SEND</Text>
+          </TouchableOpacity>
+        </View>
       </View>
-    </View>
+    </KeyboardAvoidingView>
   );
 };
 
@@ -265,7 +285,8 @@ const styles = StyleSheet.create({
   },
   expiredStoryMessage: {
     fontSize: 14,
-    color: '#666'
+    color: '#666',
+    maxWidth: 200
   },
   profileImagePlaceholder: {
     width: 40,
@@ -359,7 +380,16 @@ const styles = StyleSheet.create({
   sendButtonText: {
     color: 'white', 
     fontSize: 16,
-  }
+  },
+  containerLoad: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  horizontalLoad: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    padding: 10,
+  },
 });
 
 

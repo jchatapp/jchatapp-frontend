@@ -1,9 +1,45 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput } from 'react-native';
+import { useIsFocused } from '@react-navigation/native';
 
 const ChatListScreen = ({ route, navigation }) => {
   const [activeTab, setActiveTab] = useState('messages');
-  const { chatList } = route.params;
+  const [searchQuery, setSearchQuery] = useState('');
+  const [chatList, setChatList] = useState(route.params.chatList);
+  const { userInfo } = route.params;
+  const isFocused = useIsFocused();
+  const [polling, setPolling] = useState(true);
+
+  useEffect(() => {
+    if (isFocused) {
+      fetchChatList();
+      setPolling(true);
+    } else {
+      setPolling(false);
+    }
+  }, [isFocused]);
+
+  useEffect(() => {
+    if (polling) {
+      const interval = setInterval(() => {
+        fetchChatList();
+      }, 10000);
+      return () => clearInterval(interval);
+    }
+  }, [polling]);
+
+  const fetchChatList = async () => {
+    try {
+      const response = await fetch(`http://10.0.2.2:8000/chats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat list');
+      }
+      const data = await response.json();
+      setChatList(data);
+    } catch (error) {
+      console.error('Failed to fetch chat list:', error);
+    }
+  };
 
   const fetchChatMessages = async (threadId) => {
     try {
@@ -11,65 +47,117 @@ const ChatListScreen = ({ route, navigation }) => {
       if (!response.ok) {
         throw new Error('Failed to fetch chat messages');
       }
-      const data = await response.json();
-      return data;  
+      return await response.json();  
     } catch (error) {
       console.error('Failed to fetch chat messages:', error);
-      return null;  
+    }
+  };
+
+  const markAsSeen = async (threadId, itemId) => {
+    try {
+      await fetch(`http://10.0.2.2:8000/chats/${threadId}/seen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ item_id: itemId }),
+      });
+    } catch (error) {
+      console.error('Failed to mark message as seen:', error);
     }
   };
 
   const handlePressChatItem = async (item) => {
-    item.read_state = 0;
+    setPolling(false);
     const chatMessages = await fetchChatMessages(item.thread_id);
     if (chatMessages) {
       navigation.navigate('ChatMessages', { chatList: chatMessages });
+      if (item.items && item.items[0]) {
+        await markAsSeen(item.thread_id, item.items[0].item_id);
+        updateChatList(item.thread_id);
+      }
     }
   };
+
+  const updateChatList = (threadId) => {
+    setChatList(prevChatList =>
+      prevChatList.map(chat =>
+        chat.thread_id === threadId ? { ...chat, read_state: 0 } : chat
+      )
+    );
+  };
+
+  const filteredChatList = chatList.filter(item =>
+    item.thread_title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const renderChatItem = ({ item }) => (
+    <TouchableOpacity onPress={() => handlePressChatItem(item)}>
+      <View style={styles.chatItem}>
+        <Image
+          style={styles.chatImage}
+          source={{ uri: item.users[0].profile_pic_url }}
+        />
+        <View style={styles.textContainer}>
+          <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
+            {item.thread_title}
+          </Text>
+          <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+            {item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}
+          </Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  const renderUserInfo = () => (
+    <View style={styles.userInfoContainer}>
+      <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
+      <View style={styles.userInfoTextContainer}>
+        <Text style={styles.userName}>{userInfo.full_name}</Text>
+        <TouchableOpacity style={styles.button} onPress={() => console.log('Edit close following')}>
+          <Text style={styles.buttonText}>Edit close following</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
       <View style={styles.tabsContainer}>
-        <TouchableOpacity
-          style={[styles.tab, activeTab === 'messages' && styles.activeTab]}
-          onPress={() => setActiveTab('messages')}
-        >
-          <Text style={styles.tabText}>Messages</Text>
-        </TouchableOpacity>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'empty' && styles.activeTab]}
           onPress={() => setActiveTab('empty')}
         >
           <Text style={styles.tabText}>Activity</Text>
         </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.tab, activeTab === 'messages' && styles.activeTab]}
+          onPress={() => setActiveTab('messages')}
+        >
+          <Text style={styles.tabText}>Messages</Text>
+        </TouchableOpacity>
       </View>
-
       {activeTab === 'messages' ? (
-        <FlatList
-          data={chatList}
-          keyExtractor={(item) => item.thread_id}
-          renderItem={({ item }) => (
-            <TouchableOpacity onPress={() => handlePressChatItem(item)}>
-              <View style={styles.chatItem}>
-                <Image
-                  style={styles.chatImage}
-                  source={{ uri: item.users[0].profile_pic_url }}
-                />
-                <View style={styles.textContainer}>
-                  <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>{item.thread_title}</Text>
-                  {item.read_state === 1 ? (
-                    <Text style={[styles.chatSnippet, styles.boldText]}>New Messages</Text>
-                  ) : (
-                    <Text style={styles.chatSnippet}>{item.last_permanent_item.text}</Text>
-                  )}
-                </View>
-              </View>
-            </TouchableOpacity>
-          )}
-        />
+        <>
+          <TextInput
+            style={styles.searchBar}
+            placeholder="Search..."
+            value={searchQuery}
+            onChangeText={setSearchQuery}
+          />
+          <FlatList
+            data={filteredChatList}
+            keyExtractor={(item) => item.thread_id}
+            renderItem={renderChatItem}
+          />
+        </>
       ) : (
-        <View style={styles.emptyContainer}>
-          <Text style={styles.emptyText}>No content available.</Text>
+        <View style={styles.activityContainer}>
+          {renderUserInfo()}
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No content available.</Text>
+          </View>
         </View>
       )}
     </View>
@@ -96,6 +184,13 @@ const styles = StyleSheet.create({
   },
   activeTab: {
     borderBottomColor: 'red',
+  },
+  searchBar: {
+    padding: 10,
+    borderColor: '#ddd',
+    borderWidth: 1,
+    margin: 10,
+    borderRadius: 5,
   },
   chatItem: {
     flexDirection: 'row',
@@ -130,7 +225,45 @@ const styles = StyleSheet.create({
   },
   boldText: {
     fontWeight: 'bold',
-  }
+  },
+  activityContainer: {
+    padding: 20,
+  },
+  userInfoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 20,
+    padding: 10,
+  },
+  profileImage: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    marginRight: 20,
+  },
+  userInfoTextContainer: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginVertical: 5,
+  },
+  userFollowing: {
+    fontSize: 16,
+    color: '#777',
+    marginBottom: 10,
+  },
+  button: {
+    backgroundColor: '#ff4757',
+    padding: 10,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  buttonText: {
+    color: 'white',
+    fontWeight: 'bold',
+  },
 });
 
 export default ChatListScreen;

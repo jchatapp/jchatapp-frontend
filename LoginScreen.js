@@ -1,64 +1,91 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, Button, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import axios from 'axios';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
-    if (isLoading) return; 
+    if (isLoading) return;
     setIsLoading(true);
-  
+    setErrorMessage(''); 
+
     try {
       const response = await axios.post('http://10.0.2.2:8000/login', { username, password });
       setIsLoading(false);
       if (response.data.chatList) {
-        const chatList = response.data.chatList; 
-        navigation.navigate('ChatListScreen', { chatList });
+        const userInfo = response.data.userInfo;
+        const chatList = response.data.chatList;
+        navigation.replace('ChatListScreen', { chatList, userInfo });
       } else {
         console.error('Chat list not found in response');
+        setErrorMessage('Login failed: Invalid username or password.'); 
       }
     } catch (error) {
-      setIsLoading(false); 
-  
-      console.error('Full error:', error); 
+      setIsLoading(false);
+      console.error('Full error:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-      console.error('Login failed:', errorMessage); 
+      console.error('Login failed:', errorMessage);
+      setErrorMessage(errorMessage); 
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Login</Text>
-      <TextInput
-        style={styles.input}
-        placeholder="Username"
-        value={username}
-        onChangeText={setUsername}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-      />
-      <Button title="Login" onPress={handleLogin} /> 
-    </View>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      style={styles.container}
+      keyboardVerticalOffset={Platform.OS === 'ios' ? 5 : 0}
+    >
+      <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <View style={styles.inner}>
+          <Image source={require('./assets/logo.png')} style={styles.logo}/>
+          <TextInput
+            style={styles.input}
+            placeholder="Username"
+            value={username}
+            onChangeText={setUsername}
+          />
+          <TextInput
+            style={styles.input}
+            placeholder="Password"
+            secureTextEntry
+            value={password}
+            onChangeText={setPassword}
+          />
+          {errorMessage ? (
+            <Text style={styles.errorText}>{errorMessage}</Text>
+          ) : null}
+          <TouchableOpacity style={styles.button} onPress={handleLogin} disabled={isLoading}>
+            {isLoading ? (
+              <ActivityIndicator size="small" color="#ffffff" />
+            ) : (
+              <Text style={styles.buttonText}>Log in with Instagram</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </TouchableWithoutFeedback>
+    </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  inner: {
+    flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    paddingHorizontal: 30,
     backgroundColor: '#f5f5f5',
   },
-  title: {
-    fontSize: 24,
+  logo: {
+    width: 275,
+    height: 130,
+    resizeMode: 'contain',
     marginBottom: 20,
   },
   input: {
@@ -69,6 +96,23 @@ const styles = StyleSheet.create({
     marginBottom: 15,
     width: '80%',
   },
+  button: {
+    backgroundColor: '#385185', 
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 5,
+    width: '80%',
+    alignItems: 'center',
+  },
+  buttonText: {
+    fontSize: 16,
+    color: '#ffffff',
+    fontWeight: 'bold'
+  },
+  errorText: {
+    color: 'red',
+    marginBottom: 10,
+  }
 });
 
 export default LoginScreen;
