@@ -51,6 +51,7 @@ const ChatMessages = ({ route, navigation }) => {
           return updatedMessages;
         });
       }
+      await markAsSeen(chatList.thread_id, chatList.items[0].item_id);
     } catch (error) {
       console.error('Failed to fetch new messages:', error);
       await new Promise(resolve => setTimeout(resolve, 30000)); 
@@ -118,18 +119,32 @@ const ChatMessages = ({ route, navigation }) => {
     }
   };
 
+  const markAsSeen = async (threadId, itemId) => {
+    try {
+      await fetch(`http://10.0.2.2:8000/chats/${threadId}/seen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ item_id: itemId }),
+      });
+    } catch (error) {
+      console.error('Failed to mark message as seen:', error);
+    }
+  };
+
   const loadOlderMessages = async () => {
     if (loadingOlderMessages || !moreAvailable) return;
-  
+    
     setLoadingOlderMessages(true);
     const result = await fetchOlderMessages(chatList.thread_id, cursor);
-  
-    if (result.moreAvailable === false) {
+
+    if (result.messages === null) {
       setMoreAvailable(false); 
       setLoadingOlderMessages(false);
       return;
     }
-  
+
     if (result.messages && result.messages.length > 0) {
       const filteredMessages = result.messages.filter(msg => !messageIds.has(msg.item_id));
       const newMessageIds = new Set([...messageIds, ...filteredMessages.map(msg => msg.item_id)]);
