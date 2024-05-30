@@ -91,19 +91,42 @@ const ChatListScreen = ({ route, navigation }) => {
     item.thread_title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const GroupProfilePics = ({ chatList }) => {
+    if (chatList.users.length < 2) {
+      return null; 
+    }
+  
+    return (
+      <View style={styles.profilePicContainer}>
+        <Image
+          source={{ uri: chatList.users[0].profile_pic_url }}
+          style={styles.profilePicBack}
+        />
+        <Image
+          source={{ uri: chatList.users[1].profile_pic_url }}
+          style={styles.profilePicFront}
+        />
+      </View>
+    );
+  };
+
   const renderChatItem = ({ item }) => (
     <TouchableOpacity onPress={() => handlePressChatItem(item)}>
       <View style={styles.chatItem}>
-        <Image
-          style={styles.chatImage}
-          source={{ uri: item.users[0].profile_pic_url }}
-        />
+        {item.is_group ? (
+          <GroupProfilePics chatList={item} />
+        ) : (
+          <Image
+            style={styles.chatImage}
+            source={{ uri: item.users[0].profile_pic_url }}
+          />
+        )}
         <View style={styles.textContainer}>
           <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
             {item.thread_title}
           </Text>
           <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-            {item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}
+            {item.last_permanent_item.is_sent_by_viewer ? `You: ${item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}` : item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}
           </Text>
         </View>
       </View>
@@ -264,6 +287,28 @@ const styles = StyleSheet.create({
     color: 'white',
     fontWeight: 'bold',
   },
+  profilePicContainer: {
+    flexDirection: 'row',
+    position: 'relative',
+    height: 50, 
+    width: 60, 
+    alignItems: 'center',
+  },
+  profilePicBack: {
+    width: 40,
+    height: 40, 
+    borderRadius: 20, 
+  },
+  profilePicFront: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderColor: "white",
+    position: 'absolute',
+    left: 10,
+    top: 10, 
+    zIndex: 1,
+  }
 });
 
 export default ChatListScreen;

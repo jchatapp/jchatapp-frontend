@@ -37,6 +37,19 @@ export const renderImageMessage = (url, profilePicUrl, isSender, width, height, 
     );
   };
 
+  export const renderActionLog = (text) => {
+    return (
+      <View style={styles.centeredView}>
+        <Text style={[
+          styles.messageText,
+          styles.centeredText
+        ]}>
+          {text}
+        </Text>
+      </View>
+    )
+  }
+
 export const renderVideoMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
   const maxWidth = 200; 
   const scale = width > maxWidth ? maxWidth / width : 1; 
@@ -350,6 +363,17 @@ const styles = StyleSheet.create({
   },
   messageText: {
     fontSize: 16,
+  },
+  centeredView: {
+    alignItems: 'center', 
+    justifyContent: 'center', 
+    width: '100%',
+    padding: 5 
+  },
+  centeredText: {
+    textAlign: 'center', 
+    fontSize: 14,
+    color: "gray"
   },
   textWhite: {
     color: 'white',

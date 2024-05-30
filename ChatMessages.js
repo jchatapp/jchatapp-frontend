@@ -9,14 +9,15 @@ import {
   renderLinkMessage,
   renderStoryShare,
   renderAnimatedMedia,
-  renderRavenMedia
+  renderRavenMedia,
+  renderActionLog
 } from './Renderer'; 
 
 const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
   const senderPic = chatList.inviter.profile_pic_url;
   const receiverPic = chatList.users[0].profile_pic_url;
-  const receiverName = chatList.users[0].full_name;
+  const receiverName = chatList.is_group ? chatList.thread_title : chatList.users[0].full_name;
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [loadingNewMessages, setLoadingNewMessages] = useState(false);
   const [cursor, setCursor] = useState(null);
@@ -26,6 +27,15 @@ const ChatMessages = ({ route, navigation }) => {
   const [messageIds, setMessageIds] = useState(new Set(chatList.items.map(item => item.item_id)));
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef();
+  const [userProfiles, setUserProfiles] = useState({});
+
+useEffect(() => {
+  const profiles = {};
+  chatList.users.forEach(user => {
+    profiles[user.strong_id__] = user.profile_pic_url;
+  });
+  setUserProfiles(profiles);
+}, [chatList.users]);
 
   useEffect(() => {
     setMessages(chatList.items.sort((a, b) => b.timestamp - a.timestamp));
@@ -66,7 +76,24 @@ const ChatMessages = ({ route, navigation }) => {
     return () => clearInterval(intervalId); 
   }, [fetchNewMessages]);
   
-  
+  const GroupProfilePics = ({ chatList }) => {
+  if (chatList.users.length < 2) {
+    return null; 
+  }
+
+  return (
+    <View style={styles.profilePicContainer}>
+      <Image
+        source={{ uri: chatList.users[0].profile_pic_url }}
+        style={styles.profilePicBack}
+      />
+      <Image
+        source={{ uri: chatList.users[1].profile_pic_url }}
+        style={styles.profilePicFront}
+      />
+    </View>
+  );
+};
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {
@@ -158,7 +185,7 @@ const ChatMessages = ({ route, navigation }) => {
 
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
-    const profilePicUrl = isSender ? senderPic : receiverPic;
+    const profilePicUrl = isSender ? senderPic : (userProfiles[item.user_id] || "default_profile_pic_url");
     const prevMessage = index > 0 ? messages[index - 1] : null;
     const isFirstFromSender = !prevMessage || prevMessage.is_sent_by_viewer !== isSender;
 
@@ -206,18 +233,22 @@ const ChatMessages = ({ route, navigation }) => {
       case 'raven_media':
         messageContent = renderRavenMedia(item, isSender, navigation)
         break;
-  
+
+      case 'action_log':
+        messageContent = renderActionLog(item.action_log.description)
+        break
+        
       default:
         messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
         break;
     }
-
+      
     return (
       <View style={[
         styles.messageContainer,
         isSender ? styles.senderContainer : styles.receiverContainer
       ]}>
-        {!isSender && (
+        {!isSender && item.item_type !== 'action_log' && (
           <View style={styles.profileImagePlaceholder}>
             {isFirstFromSender && (
               <Image
@@ -247,8 +278,13 @@ const ChatMessages = ({ route, navigation }) => {
               style={{ width: 20, height: 20 }}
             />
           </TouchableOpacity>
-          <Image source={{ uri: receiverPic }} 
-          style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}/>
+          {chatList.is_group ? (
+            <GroupProfilePics chatList={chatList} />
+            ) : (
+                <Image source={{ uri: receiverPic }} 
+                    style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}
+                />
+            )}
           <Text style={styles.receiverName}>{receiverName}</Text>
         </View>
         <View style={styles.separatorLine}></View>
@@ -405,6 +441,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-around',
     padding: 10,
   },
+  profilePicContainer: {
+    flexDirection: 'row',
+    position: 'relative',
+    height: 50, 
+    width: 60, 
+    alignItems: 'center',
+    marginVertical: 4,
+    marginHorizontal: 10
+  },
+  profilePicBack: {
+    width: 40,
+    height: 40, 
+    borderRadius: 20, 
+  },
+  profilePicFront: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    borderColor: "white",
+    position: 'absolute',
+    left: 10,
+    top: 10, 
+    zIndex: 1,
+  }
 });
 
 
