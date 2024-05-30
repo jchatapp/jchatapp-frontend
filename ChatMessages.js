@@ -17,7 +17,7 @@ const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
   const senderPic = chatList.inviter.profile_pic_url;
   const receiverPic = chatList.users[0].profile_pic_url;
-  const receiverName = chatList.is_group ? chatList.thread_title : chatList.users[0].full_name;
+  const receiverName = chatList.is_group ? chatList.thread_title : (chatList.users[0].full_name || chatList.users[0].short_name);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [loadingNewMessages, setLoadingNewMessages] = useState(false);
   const [cursor, setCursor] = useState(null);

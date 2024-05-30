@@ -1,6 +1,12 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput } from 'react-native';
+import React, { useState, useEffect, useRef  } from 'react';
+import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput, Animated } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
+import ActionSheet from 'react-native-actionsheet';
+import { LogBox } from 'react-native';
+import { CommonActions } from '@react-navigation/native';
+import axios from 'axios';
+
+LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
   const [activeTab, setActiveTab] = useState('messages');
@@ -9,6 +15,50 @@ const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
   const isFocused = useIsFocused();
   const [polling, setPolling] = useState(true);
+  const actionSheetRef = useRef();
+
+  const handleGearPress = () => {
+    actionSheetRef.current.show();
+  };
+
+  const handleLogout = async () => {
+    try {
+      const response = await axios.post('http://10.0.2.2:8000/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.status === 200) {
+        navigation.dispatch(
+          CommonActions.reset({
+            index: 0,
+            routes: [
+              { name: 'LoginScreen' },
+            ],
+          })
+        );
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error);
+      }
+    } catch (error) {
+      console.error('Failed to logout:', error.message);
+    }
+  };
+  
+
+  const handleActionSheetPress = (index) => {
+   
+    if (index === 1) { 
+      handleLogout()
+    }
+  };
+
+  const handleAddPress = () => {
+    console.log("Add icon pressed");
+  };
 
   useEffect(() => {
     if (isFocused) {
@@ -147,6 +197,31 @@ const ChatListScreen = ({ route, navigation }) => {
 
   return (
     <View style={styles.container}>
+      <View style={styles.header}>
+        <TouchableOpacity onPress={handleGearPress}>
+        <Image
+          source={require('./assets/gear.png')} style={styles.headerButtons}
+        />
+        </TouchableOpacity>
+        <Image
+        source={require('./assets/logo.png')} style={styles.logo}
+        />
+        <TouchableOpacity onPress={handleAddPress}>
+        <Image
+        source={require('./assets/plus.png')} style={styles.headerButtons}
+        />
+        </TouchableOpacity>
+      </View>
+      <ActionSheet
+        ref={actionSheetRef}
+        title={'What do you want to do?'}
+        options={['Cancel', 'Logout']}
+        cancelButtonIndex={0}
+        destructiveButtonIndex={1}
+        onPress={handleActionSheetPress}
+      />
+
+      <View style={styles.separatorLine}></View>
       <View style={styles.tabsContainer}>
         <TouchableOpacity
           style={[styles.tab, activeTab === 'empty' && styles.activeTab]}
@@ -188,19 +263,38 @@ const ChatListScreen = ({ route, navigation }) => {
 };
 
 const styles = StyleSheet.create({
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 10,
+    paddingTop: 40,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  headerButtons: {
+    width: 20,
+    height: 20,
+    marginHorizontal: 10
+  },
+  logo: {
+    width: 80,
+    height: 20,
+  },
   container: {
     flex: 1,
     backgroundColor: 'white',
   },
   tabsContainer: {
-    paddingTop: 40,
     flexDirection: 'row',
     borderBottomWidth: 1,
     borderColor: '#ccc',
   },
   tab: {
     flex: 1,
-    padding: 16,
+    padding: 10,
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -209,7 +303,8 @@ const styles = StyleSheet.create({
     borderBottomColor: 'red',
   },
   searchBar: {
-    padding: 10,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
     borderColor: '#ddd',
     borderWidth: 1,
     margin: 10,
@@ -308,7 +403,12 @@ const styles = StyleSheet.create({
     left: 10,
     top: 10, 
     zIndex: 1,
-  }
+  },
+  separatorLine: {
+    height: 1,           
+    backgroundColor: 'gray', 
+    width: '100%',     
+  },
 });
 
 export default ChatListScreen;
