@@ -1,75 +1,155 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
+import { Button } from 'react-native';
 import axios from 'axios';
+import config from './config';
 
 const NewMessageScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
-  const [followers, setFollowers] = useState([]);
+  const [users, setUsers] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  const [filteredFollowers, setFilteredFollowers] = useState([]);
+  const [filteredUsers, setFilteredUsers] = useState([]);
+  const [selectedUsers, setSelectedUsers] = useState([]);
+  const [noUserFound, setNoUserFound] = useState(false);
+  const [debounceTimeout, setDebounceTimeout] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    const fetchFollowers = async () => {
-      try {
-        const response = await axios.get('http://localhost:8000/followers'); // Adjust this endpoint
-        setFollowers(response.data);
-        setFilteredFollowers(response.data);
-      } catch (error) {
-        console.error('Failed to fetch followers:', error);
-      }
-    };
+    if (debounceTimeout) {
+      clearTimeout(debounceTimeout);
+    }
 
-    fetchFollowers();
-  }, []);
-
-  useEffect(() => {
-    setFilteredFollowers(
-      followers.filter(follower =>
-        follower.username.toLowerCase().includes(searchQuery.toLowerCase())
-      )
+    setDebounceTimeout(
+      setTimeout(() => {
+        searchUsers();
+      }, 500)
     );
-  }, [searchQuery, followers]);
+  }, [searchQuery]);
 
-  const handlePressFollower = (follower) => {
-    // Implement logic to start a new chat with the selected follower
+  const searchUsers = async () => {
+    if (searchQuery) {
+      setIsLoading(true);  
+      try {
+        const response = await axios.get(config.API_URL + `/searchUser?username=${searchQuery}`);
+        if (response.data) {
+          setFilteredUsers([response.data]);
+          setNoUserFound(false);
+        }
+        setIsLoading(false); 
+      } catch (error) {
+        setIsLoading(false);  
+        if (error.response && error.response.status === 404) {
+          setFilteredUsers([]);
+          setNoUserFound(true);
+        } else {
+          console.error('Failed to search users:', error);
+          Alert.alert('Error', 'Failed to fetch user data.');
+        }
+      }
+    } else {
+      setFilteredUsers(users);
+      setNoUserFound(false);
+    }
   };
 
-  const renderFollowerItem = ({ item }) => (
-    <TouchableOpacity onPress={() => handlePressFollower(item)}>
-      <View style={styles.followerItem}>
-        <Image
-          style={styles.followerImage}
-          source={{ uri: item.profile_pic_url }}
-        />
-        <Text style={styles.followerName}>{item.username}</Text>
-      </View>
-    </TouchableOpacity>
+  const handlePressUser = (user) => {
+    setSelectedUsers(prevState => {
+      if (prevState.some(selectedUser => selectedUser.pk === user.pk)) {
+        return prevState.filter(selectedUser => selectedUser.pk !== user.pk);
+      } else {
+        return [...prevState, user];
+      }
+    });
+  };
+
+  const handleRemoveSelectedUser = (user) => {
+    setSelectedUsers(prevState => prevState.filter(selectedUser => selectedUser.pk !== user.pk));
+  };
+
+  const createChat = () => {
+    console.log("Chat created with selected users.");
+    // TODO: CREATE CHAT
+  };
+
+  const renderSelectedUserItem = ({ item }) => (
+    <View style={styles.selectedUserItem}>
+      <Image style={styles.selectedUserImage} source={{ uri: item.profile_pic_url }} />
+      <Text style={styles.selectedUserName}>{item.username}</Text>
+      <TouchableOpacity onPress={() => handleRemoveSelectedUser(item)} style={styles.removeButton}>
+        <Image style={styles.closebutton} source={require("./assets/close.png")} />
+      </TouchableOpacity>
+    </View>
   );
 
+  const renderUserItem = ({ item }) => {
+    const isSelected = selectedUsers.some(selectedUser => selectedUser.pk === item.pk);
+    return (
+      <TouchableOpacity onPress={() => handlePressUser(item)}>
+        <View style={styles.userItem}>
+          <Image style={styles.userImage} source={{ uri: item.profile_pic_url }} />
+          <View style={styles.userInfo}>
+            <Text style={styles.userName}>{item.username}</Text>
+            {item.is_verified && (
+              <Image style={styles.verificationIcon} source={require('./assets/verified.png')} />
+            )}
+          </View>
+          <View style={[styles.selectionCircle, isSelected && styles.selectedCircle]} />
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
   return (
-    <View style={styles.container}>
+    <KeyboardAvoidingView style={styles.container} behavior={Platform.OS === "ios" ? "padding" : "height"}>
       <View style={styles.header}>
         <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backButton}>
-          <Image
-            source={require('./assets/back_arrow.png')}
-            style={{ width: 20, height: 20 }}
-          />
+          <Image source={require('./assets/back_arrow.png')} style={{ width: 20, height: 20 }} />
         </TouchableOpacity>
         <Text style={styles.headerTitle}>New Message</Text>
       </View>
       <TextInput
         style={styles.searchBar}
-        placeholder="Search followers..."
+        placeholder="To: Search"
         value={searchQuery}
-        onChangeText={setSearchQuery}
+        onChangeText={(text) => {
+          setNoUserFound(false);  
+          setSearchQuery(text);
+        }}
       />
-      <FlatList
-        data={filteredFollowers}
-        keyExtractor={(item) => item.pk.toString()}
-        renderItem={renderFollowerItem}
-      />
-    </View>
+      <View style={{ flex: 1, backgroundColor: 'white' }}>
+        {selectedUsers.length > 0 && (
+          <>
+            <FlatList
+              horizontal
+              data={selectedUsers}
+              keyExtractor={(item) => item.pk.toString()}
+              renderItem={renderSelectedUserItem}
+              style={{ flexGrow: 0 }}
+              showsHorizontalScrollIndicator={false}
+            />
+          </>
+        )}
+        {isLoading ? (
+          <ActivityIndicator size="small" color="#333" style={{ marginTop: 10 }} />
+        ) : noUserFound ? (
+          <Text style={styles.noUserText}>No user found.</Text>
+        ) : (
+          <FlatList
+            data={filteredUsers}
+            keyExtractor={(item) => item.pk.toString()}
+            renderItem={renderUserItem}
+            style={{ flex: 1 }}
+          />
+        )}
+      </View>
+      {selectedUsers.length > 0 && (
+          <TouchableOpacity onPress={createChat} style={styles.createChatButton}>
+            <Text style={styles.createChatButtonText}>Create Chat</Text>
+          </TouchableOpacity>
+        )}
+    </KeyboardAvoidingView>
   );
+  
 };
 
 const styles = StyleSheet.create({
@@ -97,26 +177,107 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   searchBar: {
-    paddingVertical: 3,
+    paddingVertical: 8,
     paddingHorizontal: 10,
     borderColor: '#ddd',
     borderWidth: 1,
-    margin: 10,
+    marginHorizontal: 10,
     borderRadius: 5,
+    marginVertical: 10,
   },
-  followerItem: {
+  selectedUserItem: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    marginHorizontal: 10,
+    marginBottom: 5,
+  },
+  createChatButton: {
+    padding: 10,
+    margin: 10,
+  },
+  selectedUserImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+  },
+  selectedUserName: {
+    fontSize: 12,
+    
+  },
+  removeButton: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    padding: 2,
+  },
+  closebutton: {
+    height: 15,
+    width: 15,
+    padding: 2
+  },
+  noUserText: {
+    fontSize: 12,
+    marginTop: 5,
+    marginHorizontal: 12
+  },
+  userItem: {
     flexDirection: 'row',
     padding: 10,
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
-  followerImage: {
+  userImage: {
     width: 50,
     height: 50,
     marginRight: 10,
     borderRadius: 25,
   },
-  followerName: {
+  userInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  userName: {
     fontSize: 18,
+  },
+  verificationIcon: {
+    width: 15,
+    height: 15,
+    marginLeft: 5,
+    marginTop: 5
+  },
+  selectionCircle: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    borderWidth: 2,
+    borderColor: '#ccc',
+  },
+  selectedCircle: {
+    backgroundColor: '#007AFF',
+  },
+  createChatButton: {
+    backgroundColor: 'gray',  
+    borderRadius: 25,
+    paddingVertical: 12,
+    paddingHorizontal: 50,
+    alignSelf: 'center', 
+    marginVertical: 10,
+    shadowColor: "#000",
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 3.84,
+    elevation: 5,
+  },
+
+  createChatButtonText: {
+    color: 'white',
+    fontSize: 16,
+    fontWeight: 'bold',
+    textAlign: 'center',  
   },
 });
 

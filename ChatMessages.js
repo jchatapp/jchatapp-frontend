@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
 import axios from 'axios';
+import config from './config';
 import {
   renderTextMessage,
   renderImageMessage,
@@ -45,7 +46,7 @@ useEffect(() => {
     if (loadingNewMessages) return;
     setLoadingNewMessages(true);
     try {
-      const response = await axios.get(`http://localhost:8000/chats/${chatList.thread_id}/new_messages`, {
+      const response = await axios.get(config.API_URL + `/chats/${chatList.thread_id}/new_messages`, {
         params: { last_timestamp: lastTimestamp }
       });
       if (response.data && response.data.messages.length > 0) {
@@ -97,7 +98,7 @@ useEffect(() => {
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {
-      const response = await axios.get(`http://localhost:8000/chats/${threadId}/messages`, {
+      const response = await axios.get(config.API_URL + `/chats/${threadId}/messages`, {
         params: { cursor }
       });
       return response.data;
@@ -121,7 +122,7 @@ useEffect(() => {
     setMessageIds(prevIds => new Set(prevIds.add(tempId)));
   
     try {
-      const response = await axios.post(`http://localhost:8000/chats/${chatList.thread_id}/send_message`, {
+      const response = await axios.post(config.API_URL + `/chats/${chatList.thread_id}/send_message`, {
         message: inputText
       });
 
@@ -148,7 +149,7 @@ useEffect(() => {
 
   const markAsSeen = async (threadId, itemId) => {
     try {
-      await fetch(`http://localhost:8000/chats/${threadId}/seen`, {
+      await fetch(config.API_URL + `/chats/${threadId}/seen`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -263,7 +264,6 @@ useEffect(() => {
     );
   };
 
-
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 5,
-    paddingTop: 57 // Adjusted top padding
+    paddingTop: 57 
   },
   backButton: {
     padding: 10,

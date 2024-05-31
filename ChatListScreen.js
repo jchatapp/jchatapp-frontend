@@ -5,6 +5,7 @@ import ActionSheet from 'react-native-actionsheet';
 import { LogBox } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
+import config from './config';
 
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
@@ -23,7 +24,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const handleLogout = async () => {
     try {
-      const response = await axios.post('http://localhost:8000/', {
+      const response = await axios.post(config.API_URL + '/logout', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -48,9 +49,7 @@ const ChatListScreen = ({ route, navigation }) => {
     }
   };
   
-
-  const handleActionSheetPress = (index) => {
-   
+  const handleActionSheetPress = (index) => {   
     if (index === 1) { 
       handleLogout()
     }
@@ -80,7 +79,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const fetchChatList = async () => {
     try {
-      const response = await fetch(`http://localhost:8000/chats`);
+      const response = await fetch(config.API_URL + `/chats`);
       if (!response.ok) {
         throw new Error('Failed to fetch chat list');
       }
@@ -93,7 +92,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const fetchChatMessages = async (threadId) => {
     try {
-      const response = await fetch(`http://localhost:8000/chats/${threadId}`);
+      const response = await fetch(config.API_URL + `/chats/${threadId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch chat messages');
       }
@@ -105,7 +104,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const markAsSeen = async (threadId, itemId) => {
     try {
-      await fetch(`http://localhost:8000/${threadId}/seen`, {
+      await fetch(config.API_URL + `/chats/${threadId}/seen`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -271,7 +270,7 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 10,
-    paddingTop: 50, // Adjust the top padding
+    paddingTop: 50, 
     backgroundColor: 'white',
     width: '100%',
   },
@@ -282,7 +281,7 @@ const styles = StyleSheet.create({
   },
   logo: {
     width: 120,
-    height: 50, // Adjust the height if needed
+    height: 50,
     resizeMode: 'contain',
   },
   container: {

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, Image, ActivityIndicator, KeyboardAvoidingView, Platform, TouchableWithoutFeedback, Keyboard } from 'react-native';
 import axios from 'axios';
+import config from './config';
 
 const LoginScreen = ({ navigation }) => {
   const [username, setUsername] = useState('');
@@ -14,7 +15,7 @@ const LoginScreen = ({ navigation }) => {
     setErrorMessage(''); 
 
     try {
-      const response = await axios.post('http://localhost:8000/login', { username, password });
+      const response = await axios.post(config.API_URL + '/login', { username, password });
       setIsLoading(false);
       if (response.data.chatList) {
         const userInfo = response.data.userInfo;
