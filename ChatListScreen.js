@@ -57,7 +57,7 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const handleAddPress = () => {
-    console.log("Add icon pressed");
+    navigation.navigate('NewMessageScreen', { userInfo });
   };
 
   useEffect(() => {
@@ -199,17 +199,20 @@ const ChatListScreen = ({ route, navigation }) => {
     <View style={styles.container}>
       <View style={styles.header}>
         <TouchableOpacity onPress={handleGearPress}>
-        <Image
-          source={require('./assets/gear.png')} style={styles.headerButtons}
-        />
+          <Image
+            source={require('./assets/gear.png')}
+            style={styles.headerButtons}
+          />
         </TouchableOpacity>
         <Image
-        source={require('./assets/logo.png')} style={styles.logo}
+          source={require('./assets/logo.png')}
+          style={styles.logo}
         />
         <TouchableOpacity onPress={handleAddPress}>
-        <Image
-        source={require('./assets/plus.png')} style={styles.headerButtons}
-        />
+          <Image
+            source={require('./assets/plus.png')}
+            style={styles.headerButtons}
+          />
         </TouchableOpacity>
       </View>
       <ActionSheet
@@ -294,7 +297,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     padding: 10,
-    paddingVertical:15, // Increased vertical padding size
+    paddingVertical: 15, // Increased vertical padding size
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -407,4 +410,3 @@ const styles = StyleSheet.create({
 });
 
 export default ChatListScreen;
- 
