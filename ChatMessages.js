@@ -45,7 +45,7 @@ useEffect(() => {
     if (loadingNewMessages) return;
     setLoadingNewMessages(true);
     try {
-      const response = await axios.get(`http://10.0.2.2:8000/chats/${chatList.thread_id}/new_messages`, {
+      const response = await axios.get(`http://localhost:8000/chats/${chatList.thread_id}/new_messages`, {
         params: { last_timestamp: lastTimestamp }
       });
       if (response.data && response.data.messages.length > 0) {
@@ -97,7 +97,7 @@ useEffect(() => {
 
   const fetchOlderMessages = async (threadId, cursor) => {
     try {
-      const response = await axios.get(`http://10.0.2.2:8000/chats/${threadId}/messages`, {
+      const response = await axios.get(`http://localhost:8000/chats/${threadId}/messages`, {
         params: { cursor }
       });
       return response.data;
@@ -121,7 +121,7 @@ useEffect(() => {
     setMessageIds(prevIds => new Set(prevIds.add(tempId)));
   
     try {
-      const response = await axios.post(`http://10.0.2.2:8000/chats/${chatList.thread_id}/send_message`, {
+      const response = await axios.post(`http://localhost:8000/chats/${chatList.thread_id}/send_message`, {
         message: inputText
       });
 
@@ -148,7 +148,7 @@ useEffect(() => {
 
   const markAsSeen = async (threadId, itemId) => {
     try {
-      await fetch(`http://10.0.2.2:8000/chats/${threadId}/seen`, {
+      await fetch(`http://localhost:8000/chats/${threadId}/seen`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -349,7 +349,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     padding: 5,
-    paddingTop: 30
+    paddingTop: 57 // Adjusted top padding
   },
   backButton: {
     padding: 10,

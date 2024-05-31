@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef  } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput, Animated } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import ActionSheet from 'react-native-actionsheet';
@@ -23,7 +23,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const handleLogout = async () => {
     try {
-      const response = await axios.post('http://10.0.2.2:8000/logout', {
+      const response = await axios.post('http://localhost:8000/', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -80,7 +80,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const fetchChatList = async () => {
     try {
-      const response = await fetch(`http://10.0.2.2:8000/chats`);
+      const response = await fetch(`http://localhost:8000/chats`);
       if (!response.ok) {
         throw new Error('Failed to fetch chat list');
       }
@@ -93,7 +93,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const fetchChatMessages = async (threadId) => {
     try {
-      const response = await fetch(`http://10.0.2.2:8000/chats/${threadId}`);
+      const response = await fetch(`http://localhost:8000/chats/${threadId}`);
       if (!response.ok) {
         throw new Error('Failed to fetch chat messages');
       }
@@ -105,7 +105,7 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const markAsSeen = async (threadId, itemId) => {
     try {
-      await fetch(`http://10.0.2.2:8000/chats/${threadId}/seen`, {
+      await fetch(`http://localhost:8000/${threadId}/seen`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -268,20 +268,19 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     padding: 10,
-    paddingTop: 40,
-  },
-  headerTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
+    paddingTop: 50, // Adjust the top padding
+    backgroundColor: 'white',
+    width: '100%',
   },
   headerButtons: {
-    width: 20,
-    height: 20,
-    marginHorizontal: 10
+    width: 25,
+    height: 25,
+    marginHorizontal: 10,
   },
   logo: {
-    width: 80,
-    height: 20,
+    width: 120,
+    height: 50, // Adjust the height if needed
+    resizeMode: 'contain',
   },
   container: {
     flex: 1,
@@ -295,6 +294,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     padding: 10,
+    paddingVertical:15, // Increased vertical padding size
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -367,11 +367,6 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
     marginVertical: 5,
   },
-  userFollowing: {
-    fontSize: 16,
-    color: '#777',
-    marginBottom: 10,
-  },
   button: {
     backgroundColor: '#ff4757',
     padding: 10,
@@ -412,3 +407,4 @@ const styles = StyleSheet.create({
 });
 
 export default ChatListScreen;
+ 

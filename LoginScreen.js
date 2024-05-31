@@ -14,7 +14,7 @@ const LoginScreen = ({ navigation }) => {
     setErrorMessage(''); 
 
     try {
-      const response = await axios.post('http://10.0.2.2:8000/login', { username, password });
+      const response = await axios.post('http://localhost:8000/login', { username, password });
       setIsLoading(false);
       if (response.data.chatList) {
         const userInfo = response.data.userInfo;
