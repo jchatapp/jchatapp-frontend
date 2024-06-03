@@ -19,6 +19,7 @@
     "expo-av": "~14.0.5",
     "expo-crypto": "~13.0.2",
     "expo-status-bar": "~1.12.1",
+    "inquirer": "^9.2.23",
     "instagram-private-api": "^1.46.1",
     "navigation": "^6.2.0",
     "node": "^20.14.0",

@@ -13,6 +13,7 @@ const NewMessageScreen = ({ route, navigation }) => {
   const [noUserFound, setNoUserFound] = useState(false);
   const [debounceTimeout, setDebounceTimeout] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [messageText, setMessageText] = useState('');
 
   useEffect(() => {
     if (debounceTimeout) {
@@ -52,6 +53,18 @@ const NewMessageScreen = ({ route, navigation }) => {
     }
   };
 
+  const fetchChatMessages = async (threadId) => {
+    try {
+      const response = await fetch(config.API_URL + `/chats/${threadId}`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat messages');
+      }
+      return await response.json();  
+    } catch (error) {
+      console.error('Failed to fetch chat messages:', error);
+    }
+  };
+
   const handlePressUser = (user) => {
     setSelectedUsers(prevState => {
       if (prevState.some(selectedUser => selectedUser.pk === user.pk)) {
@@ -66,10 +79,20 @@ const NewMessageScreen = ({ route, navigation }) => {
     setSelectedUsers(prevState => prevState.filter(selectedUser => selectedUser.pk !== user.pk));
   };
 
-  const createChat = () => {
-    console.log("Chat created with selected users.");
-    // TODO: CREATE CHAT
-  };
+  const createChat = async () => {
+    try {
+      const response = await axios.post(config.API_URL + `/createchat`, {
+        users: selectedUsers,
+        message: messageText
+      });
+      const chatMessages = await fetchChatMessages(response.data.thread.threadId)
+      if (chatMessages) {
+        navigation.replace('ChatMessages', { chatList: chatMessages });
+      }
+  } catch (error) {
+    console.error(error)
+  }
+}
 
   const renderSelectedUserItem = ({ item }) => (
     <View style={styles.selectedUserItem}>
@@ -142,20 +165,43 @@ const NewMessageScreen = ({ route, navigation }) => {
           />
         )}
       </View>
-      {selectedUsers.length > 0 && (
-          <TouchableOpacity onPress={createChat} style={styles.createChatButton}>
-            <Text style={styles.createChatButtonText}>Create Chat</Text>
+         <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            value={messageText}
+            onChangeText={setMessageText}
+            placeholder="Message..."
+            placeholderTextColor="#888" 
+          />
+          <TouchableOpacity
+            style={[styles.sendButton, (selectedUsers.length === 0 || messageText.trim().length === 0) ? styles.disabledSendButton : null]}
+            onPress={() => {
+              if (selectedUsers.length > 0 && messageText.trim().length > 0) {
+                createChat();
+              }
+            }}
+            disabled={selectedUsers.length === 0 || messageText.trim().length === 0}
+          >
+            <Text style={styles.sendButtonText}>SEND</Text>
           </TouchableOpacity>
-        )}
+        </View>
     </KeyboardAvoidingView>
   );
-  
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: 'white',
+  },
+  messageInput: {
+    height: 40,
+    borderColor: 'gray',
+    borderWidth: 1,
+    marginHorizontal: 10,
+    paddingHorizontal: 10,
+    borderRadius: 20,
+    marginBottom: 10,
   },
   header: {
     flexDirection: 'row',
@@ -277,11 +323,34 @@ const styles = StyleSheet.create({
     elevation: 5,
   },
 
-  createChatButtonText: {
-    color: 'white',
+  inputContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderColor: 'lightgrey',
+    alignItems: 'center',
+  },
+  input: {
+    flex: 1,
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    backgroundColor: '#f0f0f0',
+    marginRight: 10,
+    borderRadius: 20, 
+    fontSize: 14,
+  },
+  sendButton: {
+    padding: 10,
+    backgroundColor: 'skyblue', 
+    borderRadius: 20, 
+  },
+  sendButtonText: {
+    color: 'white', 
     fontSize: 16,
-    fontWeight: 'bold',
-    textAlign: 'center',  
+  },
+  disabledSendButton: {
+    backgroundColor: 'lightgray', 
   },
 });
 
