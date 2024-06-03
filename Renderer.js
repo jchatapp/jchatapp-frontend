@@ -244,6 +244,31 @@ export const renderRavenMedia = (item, isSender, navigation) => {
   }
 };
 
+export const renderRepliedMessage = (repliedto, replier, message, item, profilePicUrl, isSender) => {
+  if (!repliedto) {
+    repliedto = "You"
+  }
+  if (!replier) {
+    replier = "You"
+  }
+  return (
+    <View style={styles.repliedMessageContainer}>
+      <Text style={styles.repliedToText}>
+        {replier} replied to {repliedto}
+      </Text>
+      <View style={styles.repliedMessageContent}>
+        <Text style={styles.repliedMessageText}>
+          {message}
+        </Text>
+      </View>
+      <View style={styles.originalMessageContent}>
+        {item.item_type === 'text' && renderTextMessage(item, profilePicUrl, isSender)}
+        {/* Add other cases if necessary */}
+      </View>
+    </View>
+  )
+}
+
 const styles = StyleSheet.create({
   storyContainer: {
     width: 150,
@@ -433,5 +458,31 @@ const styles = StyleSheet.create({
   ravenMediaText: {
     fontSize: 14, 
     color: 'white', 
-  }
+  },
+  repliedMessageContainer: {
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+    padding: 5,
+    maxWidth: '70%'
+  },
+  repliedToText: {
+    fontSize: 12,
+    color: '#888',
+  },
+  repliedMessageContent: {
+    padding: 5,
+    backgroundColor: '#e0e0e0',
+    borderRadius: 5,
+    marginVertical: 5,
+    alignSelf: 'flex-start',
+    marginHorizontal: 10
+  },
+  repliedMessageText: {
+    fontSize: 14,
+    color: '#333',
+  },
+  originalMessageContent: {
+    marginTop: 5,
+    alignSelf: 'flex-start' 
+  },
   });

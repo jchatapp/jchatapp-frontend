@@ -199,6 +199,8 @@ const styles = StyleSheet.create({
     width: 60,
     height: 60,
     borderRadius: 30,
+    borderWidth: 1, 
+    borderColor: '#d3d3d3', 
   },
   selectedUserName: {
     fontSize: 12,
@@ -231,6 +233,8 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 10,
     borderRadius: 25,
+    borderWidth: 1, 
+    borderColor: '#d3d3d3'
   },
   userInfo: {
     flex: 1,

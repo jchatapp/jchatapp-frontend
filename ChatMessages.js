@@ -11,7 +11,8 @@ import {
   renderStoryShare,
   renderAnimatedMedia,
   renderRavenMedia,
-  renderActionLog
+  renderActionLog,
+  renderRepliedMessage
 } from './Renderer'; 
 
 const ChatMessages = ({ route, navigation }) => {
@@ -29,6 +30,33 @@ const ChatMessages = ({ route, navigation }) => {
   const [inputText, setInputText] = useState('');
   const flatListRef = useRef();
   const [userProfiles, setUserProfiles] = useState({});
+  const [userMap, setUserMap] = useState({});
+
+
+  const markAsSeen = async (threadId, itemId) => {
+    try {
+      await fetch(config.API_URL + `/chats/${threadId}/seen`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ item_id: itemId }),
+      });
+    } catch (error) {
+      console.error('Failed to mark message as seen:', error);
+    }
+  };
+
+  useEffect(() => {
+    const profiles = {};
+    const userMapTemp = {};
+    chatList.users.forEach(user => {
+      profiles[user.pk] = user.profile_pic_url;
+      userMapTemp[user.pk] = user.username; 
+    });
+    setUserProfiles(profiles);
+    setUserMap(userMapTemp); 
+  }, [chatList.users]);
 
 useEffect(() => {
   const profiles = {};
@@ -45,6 +73,7 @@ useEffect(() => {
   const fetchNewMessages = async () => {
     if (loadingNewMessages) return;
     setLoadingNewMessages(true);
+    let updatedMessages = null;
     try {
       const response = await axios.get(config.API_URL + `/chats/${chatList.thread_id}/new_messages`, {
         params: { last_timestamp: lastTimestamp }
@@ -57,12 +86,14 @@ useEffect(() => {
   
           newUniqueMessages.forEach(msg => messageIds.add(msg.item_id));
   
-          const updatedMessages = [...newUniqueMessages, ...currentMessages];
+          updatedMessages = [...newUniqueMessages, ...currentMessages];
           setLastTimestamp(updatedMessages[0].timestamp); 
           return updatedMessages;
         });
       }
-      await markAsSeen(chatList.thread_id, chatList.items[0].item_id);
+      if (updatedMessages != null) {
+        await markAsSeen(chatList.thread_id, updatedMessages[0].item_id);
+      }
     } catch (error) {
       console.error('Failed to fetch new messages:', error);
       await new Promise(resolve => setTimeout(resolve, 30000)); 
@@ -147,20 +178,6 @@ useEffect(() => {
     }
   };
 
-  const markAsSeen = async (threadId, itemId) => {
-    try {
-      await fetch(config.API_URL + `/chats/${threadId}/seen`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ item_id: itemId }),
-      });
-    } catch (error) {
-      console.error('Failed to mark message as seen:', error);
-    }
-  };
-
   const loadOlderMessages = async () => {
     if (loadingOlderMessages || !moreAvailable) return;
     
@@ -187,61 +204,70 @@ useEffect(() => {
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
     const profilePicUrl = isSender ? senderPic : (userProfiles[item.user_id] || "default_profile_pic_url");
-    const prevMessage = index > 0 ? messages[index - 1] : null;
-    const isFirstFromSender = !prevMessage || prevMessage.is_sent_by_viewer !== isSender;
+    const nextMessage = messages[index - 1]; 
+    const isLastInGroup = !nextMessage || nextMessage.user_id !== item.user_id;
 
     let messageContent;
-    switch (item.item_type) {
-      case 'text':
-        messageContent = renderTextMessage(item, profilePicUrl, isSender);
-        break;
-
-      case 'media':
-        const hasVideo = item.media && item.media.video_versions;
-        if (hasVideo) {
-          const bestVideo = item.media.video_versions[0];
-          messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height, navigation);
-        } else {
-          let bestImg = item.media.image_versions2.candidates.reduce((prev, curr) => (prev.height > curr.height) ? prev : curr);
-          messageContent = renderImageMessage(bestImg.url, profilePicUrl, isSender, bestImg.width, bestImg.height, navigation);
-        }
-        break;
-
-      case 'media_share':
-        messageContent = renderMediaShare(item.media_share, profilePicUrl, isSender, navigation);
-        break;
+    if (item.replied_to_message) {
+      const repliedTo = userMap[item.replied_to_message.user_id];
+      const replier = userMap[item.user_id]
+      const repliedToMessage = item.replied_to_message.text;
       
-      case 'clip':
-        messageContent = renderMediaShare(item.clip.clip, profilePicUrl, isSender, navigation)
-        break;
-      
-      case 'story_share':
-        if (item.story_share.is_linked == false) {
-          messageContent = <View style={styles.expiredStoryContainer}>
-                  <Text style={styles.expiredStoryTitle}>{item.story_share.title}</Text>
-                  <Text style={styles.expiredStoryMessage}>{item.story_share.message}</Text>
-                </View>
-        }
-        else {
-          messageContent = renderStoryShare(item.story_share, profilePicUrl, isSender, navigation)
-        }
-        break;
+      messageContent = renderRepliedMessage(repliedTo, replier, repliedToMessage, item, profilePicUrl, isSender)
+    } else {
+      switch (item.item_type) {
+        case 'text':
+          messageContent = renderTextMessage(item, profilePicUrl, isSender);
+          break;
 
-      case 'animated_media':
-        messageContent = renderAnimatedMedia(item.animated_media.images.fixed_height.url)
-        break;
-      
-      case 'raven_media':
-        messageContent = renderRavenMedia(item, isSender, navigation)
-        break;
+        case 'media':
+          const hasVideo = item.media && item.media.video_versions;
+          if (hasVideo) {
+            const bestVideo = item.media.video_versions[0];
+            messageContent = renderVideoMessage(bestVideo.url, profilePicUrl, isSender, bestVideo.width, bestVideo.height, navigation);
+          } else {
+            let bestImg = item.media.image_versions2.candidates.reduce((prev, curr) => (prev.height > curr.height) ? prev : curr);
+            messageContent = renderImageMessage(bestImg.url, profilePicUrl, isSender, bestImg.width, bestImg.height, navigation);
+          }
+          break;
 
-      case 'action_log':
-        messageContent = renderActionLog(item.action_log.description)
-        break
+        case 'media_share':
+          messageContent = renderMediaShare(item.media_share, profilePicUrl, isSender, navigation);
+          break;
         
-      default:
-        messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
-        break;
+        case 'clip':
+          messageContent = renderMediaShare(item.clip.clip, profilePicUrl, isSender, navigation)
+          break;
+        
+        case 'story_share':
+          if (item.story_share.is_linked == false) {
+            messageContent = (
+              <View style={styles.expiredStoryContainer}>
+                <Text style={styles.expiredStoryTitle}>{item.story_share.title}</Text>
+                <Text style={styles.expiredStoryMessage}>{item.story_share.message}</Text>
+              </View>
+            );
+          } else {
+            messageContent = renderStoryShare(item.story_share, profilePicUrl, isSender, navigation);
+          }
+          break;
+
+        case 'animated_media':
+          messageContent = renderAnimatedMedia(item.animated_media.images.fixed_height.url);
+          break;
+        
+        case 'raven_media':
+          messageContent = renderRavenMedia(item, isSender, navigation);
+          break;
+
+        case 'action_log':
+          messageContent = renderActionLog(item.action_log.description);
+          break;
+          
+        default:
+          messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
+          break;
+      }
     }
       
     return (
@@ -249,16 +275,14 @@ useEffect(() => {
         styles.messageContainer,
         isSender ? styles.senderContainer : styles.receiverContainer
       ]}>
-        {!isSender && item.item_type !== 'action_log' && (
-          <View style={styles.profileImagePlaceholder}>
-            {isFirstFromSender && (
-              <Image
-                style={styles.profileImage}
-                source={{ uri: profilePicUrl }}
-              />
-            )}
-          </View>
-        )}
+        <View style={styles.profileImagePlaceholder}>
+          {!isSender && isLastInGroup && item.item_type !== 'action_log' && (
+            <Image
+              style={styles.profileImage}
+              source={{ uri: profilePicUrl }}
+            />
+          )}
+        </View>
         {messageContent}
       </View>
     );
@@ -344,6 +368,8 @@ const styles = StyleSheet.create({
     height: 40,
     marginRight: 5, 
     backgroundColor: 'transparent', 
+    justifyContent: 'center',
+   alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -365,6 +391,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     padding: 5,
     marginHorizontal: 4,
+    alignItems: 'flex-end',
   },
   senderContainer: {
     justifyContent: 'flex-end',
@@ -464,7 +491,7 @@ const styles = StyleSheet.create({
     left: 10,
     top: 10, 
     zIndex: 1,
-  }
+  },
 });
 
 

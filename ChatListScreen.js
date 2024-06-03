@@ -216,7 +216,7 @@ const ChatListScreen = ({ route, navigation }) => {
       </View>
       <ActionSheet
         ref={actionSheetRef}
-        title={'What do you want to do?'}
+        title={'Settings'}
         options={['Cancel', 'Logout']}
         cancelButtonIndex={0}
         destructiveButtonIndex={1}
@@ -296,7 +296,7 @@ const styles = StyleSheet.create({
   tab: {
     flex: 1,
     padding: 10,
-    paddingVertical: 15, // Increased vertical padding size
+    paddingVertical: 15, 
     alignItems: 'center',
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
@@ -323,6 +323,8 @@ const styles = StyleSheet.create({
     height: 50,
     marginRight: 10,
     borderRadius: 25,
+    borderWidth: 1, 
+    borderColor: '#d3d3d3', 
   },
   textContainer: {
     flex: 1,
@@ -406,6 +408,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'gray', 
     width: '100%',     
   },
+  
 });
 
 export default ChatListScreen;
