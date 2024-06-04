@@ -182,7 +182,7 @@ const NewMessageScreen = ({ route, navigation }) => {
             }}
             disabled={selectedUsers.length === 0 || messageText.trim().length === 0}
           >
-            <Text style={styles.sendButtonText}>SEND</Text>
+            <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
         </View>
     </KeyboardAvoidingView>

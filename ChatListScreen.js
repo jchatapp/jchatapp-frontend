@@ -6,6 +6,7 @@ import { LogBox } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
 import config from './config';
+import { Swipeable } from 'react-native-gesture-handler';
 
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
@@ -136,6 +137,52 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
+  const deleteChat = async (threadId) => {
+    try {
+      const response = await fetch(`${config.API_URL}/delete?thread_id=${threadId}`, { method: 'POST' });
+      if (response.ok) {
+        updateChatList(threadId);
+        fetchChatList()
+      } else {
+        throw new Error('Failed to delete chat');
+      }
+    } catch (error) {
+      console.error('Error deleting chat:', error);
+    }
+  };
+
+  const renderRightActions = (progress, dragX, threadId) => {
+    const scale = dragX.interpolate({
+        inputRange: [-100, 0],
+        outputRange: [1, 0],
+        extrapolate: 'clamp'
+    });
+
+    const opacity = dragX.interpolate({
+        inputRange: [-100, -20, 0],
+        outputRange: [1, 0.5, 0],
+        extrapolate: 'clamp'
+    });
+
+    return (
+        <Animated.View style={[styles.rightAction, { opacity: opacity }]}>
+            <TouchableOpacity
+                onPress={() => deleteChat(threadId)}
+                style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+            >
+                <Animated.Text
+                    style={[
+                        styles.actionText,
+                        { transform: [{ scale: scale }] }
+                    ]}
+                >
+                    Delete
+                </Animated.Text>
+            </TouchableOpacity>
+        </Animated.View>
+    );
+};
+
   const filteredChatList = chatList.filter(item =>
     item.thread_title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -160,26 +207,30 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const renderChatItem = ({ item }) => (
-    <TouchableOpacity onPress={() => handlePressChatItem(item)}>
-      <View style={styles.chatItem}>
-        {item.is_group ? (
-          <GroupProfilePics chatList={item} />
-        ) : (
-          <Image
-            style={styles.chatImage}
-            source={{ uri: item.users[0].profile_pic_url }}
-          />
-        )}
-        <View style={styles.textContainer}>
-          <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
-            {item.thread_title}
-          </Text>
-          <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-            {item.last_permanent_item.is_sent_by_viewer ? `You: ${item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}` : item.last_permanent_item.text ? item.last_permanent_item.text : `${item.thread_title} sent an attachment`}
-          </Text>
+    <Swipeable
+      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.thread_id)}
+    >
+      <TouchableOpacity onPress={() => handlePressChatItem(item)}>
+        <View style={styles.chatItem}>
+          {item.is_group ? (
+            <GroupProfilePics chatList={item} />
+          ) : (
+            <Image
+              style={styles.chatImage}
+              source={{ uri: item.users[0].profile_pic_url }}
+            />
+          )}
+          <View style={styles.textContainer}>
+            <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
+              {item.thread_title}
+            </Text>
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+              {item.last_permanent_item.text}
+            </Text>
+          </View>
         </View>
-      </View>
-    </TouchableOpacity>
+      </TouchableOpacity>
+    </Swipeable>
   );
 
   const renderUserInfo = () => (
@@ -407,6 +458,18 @@ const styles = StyleSheet.create({
     height: 1,           
     backgroundColor: 'gray', 
     width: '100%',     
+  },
+  rightAction: {
+    backgroundColor: 'red',
+    justifyContent: 'center', 
+    alignItems: 'center',    
+    flex: 1,
+    maxWidth: '25%'          
+  },
+  actionText: {
+    color: 'white',
+    fontWeight: '600',
+    textAlign: 'center'     
   },
   
 });

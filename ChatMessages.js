@@ -336,7 +336,7 @@ useEffect(() => {
             placeholderTextColor="#888" 
           />
           <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendButtonText}>SEND</Text>
+            <Text style={styles.sendButtonText}>Send</Text>
           </TouchableOpacity>
         </View>
       </View>
