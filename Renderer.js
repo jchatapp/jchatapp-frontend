@@ -269,6 +269,19 @@ export const renderRepliedMessage = (repliedto, replier, message, item, profileP
   )
 }
 
+export const renderPlaceholder = () => {
+  return (
+    <View style={styles.placeholderContainer}>
+      <Text style={styles.placeholderText}>
+        Message unavailable
+      </Text>
+      <Text style={styles.placeholderSubText}>
+        This content may have been deleted by its owner or hidden by their privacy settings. You may be able to view it on Instagram.
+      </Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   storyContainer: {
     width: 150,
@@ -485,4 +498,20 @@ const styles = StyleSheet.create({
     marginTop: 5,
     alignSelf: 'flex-start' 
   },
+  placeholderContainer: {
+    paddingHorizontal: 10,
+    backgroundColor: '#f0f0f0',  
+    borderRadius: 5,
+    maxWidth: "75%"
+  },
+  placeholderText: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    color: '#333'  
+  },
+  placeholderSubText: {
+    fontSize: 14,
+    color: '#666', 
+    marginTop: 5
+  }
   });

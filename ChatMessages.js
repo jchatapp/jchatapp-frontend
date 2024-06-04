@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, ActivityIndicator, KeyboardAvoidingView, Platform, Animated } from 'react-native';
+import { Swipeable } from 'react-native-gesture-handler';
 import axios from 'axios';
 import config from './config';
 import {
@@ -12,8 +13,10 @@ import {
   renderAnimatedMedia,
   renderRavenMedia,
   renderActionLog,
-  renderRepliedMessage
+  renderRepliedMessage,
+  renderPlaceholder
 } from './Renderer'; 
+import {formatTimestamp} from './utils'
 
 const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
@@ -31,6 +34,7 @@ const ChatMessages = ({ route, navigation }) => {
   const flatListRef = useRef();
   const [userProfiles, setUserProfiles] = useState({});
   const [userMap, setUserMap] = useState({});
+  const swipeableRef = useRef(null);
 
 
   const markAsSeen = async (threadId, itemId) => {
@@ -201,11 +205,27 @@ useEffect(() => {
     setLoadingOlderMessages(false);
   };
 
+  const renderRightActions = (progress, dragX, item) => {
+    const trans = dragX.interpolate({
+      inputRange: [-100, 0],
+      outputRange: [0, 100],
+      extrapolate: 'clamp',
+    });
+  
+    return (
+      <Animated.View style={[styles.rightAction, { transform: [{ translateX: trans }] }]}>
+        <Text style={styles.actionText}>{formatTimestamp(item.timestamp)}</Text>
+      </Animated.View>
+    );
+  };
+
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
     const profilePicUrl = isSender ? senderPic : (userProfiles[item.user_id] || "default_profile_pic_url");
     const nextMessage = messages[index - 1]; 
+    const prevMessage = messages[index + 1];
     const isLastInGroup = !nextMessage || nextMessage.user_id !== item.user_id;
+    const isStartOfNewThread = !prevMessage || prevMessage.user_id !== item.user_id;
 
     let messageContent;
     if (item.replied_to_message) {
@@ -263,7 +283,11 @@ useEffect(() => {
         case 'action_log':
           messageContent = renderActionLog(item.action_log.description);
           break;
-          
+        
+        case 'placeholder':
+          messageContent = renderPlaceholder();
+          break;
+        
         default:
           messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
           break;
@@ -271,20 +295,36 @@ useEffect(() => {
     }
       
     return (
-      <View style={[
-        styles.messageContainer,
-        isSender ? styles.senderContainer : styles.receiverContainer
-      ]}>
-        <View style={styles.profileImagePlaceholder}>
-          {!isSender && isLastInGroup && item.item_type !== 'action_log' && (
-            <Image
-              style={styles.profileImage}
-              source={{ uri: profilePicUrl }}
-            />
+      <Swipeable
+          ref={swipeableRef}
+          friction={2}
+          renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+      >
+        <View>
+          {isStartOfNewThread && !isSender && chatList.is_group && (
+            <View style={styles.userNameHeader}>
+              <View style={styles.usernamePlaceHolder}></View>
+              <Text style={styles.userNameText}>
+                {userMap[item.user_id] || 'Unknown User'}
+              </Text>
+            </View>
           )}
+          <View style={[
+            styles.messageContainer,
+            isSender ? styles.senderContainer : styles.receiverContainer
+          ]}>
+            <View style={styles.profileImagePlaceholder}>
+              {!isSender && isLastInGroup && item.item_type !== 'action_log' && (
+                <Image
+                  style={styles.profileImage}
+                  source={{ uri: profilePicUrl }}
+                />
+              )}
+            </View>
+            {messageContent}
+          </View>
         </View>
-        {messageContent}
-      </View>
+      </Swipeable>
     );
   };
 
@@ -363,13 +403,33 @@ const styles = StyleSheet.create({
     color: '#666',
     maxWidth: 200
   },
+  userNameHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#f0f0f0', 
+    paddingHorizontal: 10,
+    marginTop: 15
+  },
+  userNameText: {
+    fontSize: 14,
+    fontWeight: 'bold',
+    color: '#333',
+  },
   profileImagePlaceholder: {
     width: 40,
     height: 40,
     marginRight: 5, 
     backgroundColor: 'transparent', 
     justifyContent: 'center',
-   alignItems: 'center',
+    alignItems: 'center',
+  },
+  usernamePlaceHolder: {
+    width: 40,
+    height: 20,
+    marginRight: 5, 
+    backgroundColor: 'transparent', 
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   header: {
     flexDirection: 'row',
@@ -492,6 +552,10 @@ const styles = StyleSheet.create({
     top: 10, 
     zIndex: 1,
   },
+  rightAction: {
+    justifyContent: "center",
+    paddingHorizontal: 3
+  }
 });
 
 

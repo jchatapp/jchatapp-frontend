@@ -26,6 +26,7 @@ const LoginScreen = ({ navigation }) => {
         setErrorMessage('Login failed: Invalid username or password.'); 
       }
     } catch (error) {
+      console.error(error)
       setIsLoading(false);
       console.error('Full error:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
