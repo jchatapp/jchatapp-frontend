@@ -282,7 +282,52 @@ export const renderPlaceholder = () => {
   );
 }
 
+export const renderReactions = (reactions, userMap, isSender) => {
+  const containerStyle = [
+    styles.reactioncontainer,
+    { justifyContent: isSender ? 'flex-end' : 'flex-start',
+      paddingRight: isSender ? 10 : 0
+     }
+  ];
+
+  return (
+    <View style={containerStyle}>
+      <View style={styles.profileImagePlaceholder}>
+        {/* Placeholder or Image logic goes here */}
+      </View>
+      <View style={styles.reactionBubble}>
+        {reactions.emojis.map((emoji, index) => (
+          <Text key={index} style={styles.emojiText}>{emoji.emoji}</Text>
+        ))}
+      </View>
+    </View>
+  );
+};
+
 const styles = StyleSheet.create({
+  reactioncontainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'flex-start', 
+  },
+  reactionBubble: {
+    flexDirection: 'row',
+    backgroundColor: 'lightgray',
+    borderRadius: 15,
+    paddingHorizontal: 10,
+    paddingVertical: 1,
+    marginBottom: 5,
+    alignItems: 'center',
+    alignSelf: 'flex-start' 
+  },
+  emojiText: {
+    fontSize: 12
+  },
+  profileImagePlaceholder: {
+    width: 50,
+    height: 10,
+    marginRight: 5
+  },
   storyContainer: {
     width: 150,
     height: 250,
@@ -297,12 +342,12 @@ const styles = StyleSheet.create({
       position: 'absolute',
   },
   storyOverlay: {
-      flexDirection: 'row',
-      flex: 1,
-      justifyContent: 'flex-start',
-      alignItems: 'flex-start',
-      padding: 10,
-      backgroundColor: 'rgba(0, 0, 0, 0.3)'  
+    flexDirection: 'row',
+    flex: 1,
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    padding: 10,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)'  
   },
   storyprofilePic: {
     width: 20,

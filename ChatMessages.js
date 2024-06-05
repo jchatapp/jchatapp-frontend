@@ -14,7 +14,8 @@ import {
   renderRavenMedia,
   renderActionLog,
   renderRepliedMessage,
-  renderPlaceholder
+  renderPlaceholder,
+  renderReactions
 } from './Renderer'; 
 import {formatTimestamp} from './utils'
 
@@ -143,6 +144,7 @@ useEffect(() => {
   };
 
   const sendMessage = async () => {
+    setInputText('');
     if (inputText.trim()) {
       const tempId = `temp_${Date.now()}`;  
       const newMessage = {
@@ -169,8 +171,6 @@ useEffect(() => {
         prevIds.delete(tempId);
         return new Set(prevIds.add(messageId));
       });
-  
-      setInputText('');
     } catch (error) {
       console.error('Error sending message:', error);
       setMessages(currentMessages => currentMessages.filter(msg => msg.id !== tempId));
@@ -295,36 +295,45 @@ useEffect(() => {
     }
       
     return (
-      <Swipeable
-          ref={swipeableRef}
-          friction={2}
-          renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
-      >
-        <View>
-          {isStartOfNewThread && !isSender && chatList.is_group && (
-            <View style={styles.userNameHeader}>
-              <View style={styles.usernamePlaceHolder}></View>
-              <Text style={styles.userNameText}>
-                {userMap[item.user_id] || 'Unknown User'}
-              </Text>
+      !item.action_log || !item.action_log.is_reaction_log ? (
+        <Swipeable
+            ref={swipeableRef}
+            friction={2}
+            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+        >
+          <View>
+            {isStartOfNewThread && !isSender && chatList.is_group && item.item_type != "action_log" && (
+              <View style={styles.userNameHeader}>
+                <View style={styles.usernamePlaceHolder}></View>
+                <Text style={styles.userNameText}>
+                  {userMap[item.user_id] || 'Unknown User'}
+                </Text>
+              </View>
+            )}
+            <View style={[
+              styles.messageContainer,
+              isSender ? styles.senderContainer : styles.receiverContainer
+            ]}>
+              {item.item_type !== 'action_log' && (
+                  <View style={styles.profileImagePlaceholder}>
+                    {!isSender && isLastInGroup && (
+                      <Image
+                        style={styles.profileImage}
+                        source={{ uri: profilePicUrl }}
+                      />
+                    )}
+                  </View>
+                )}
+              {messageContent}
             </View>
-          )}
-          <View style={[
-            styles.messageContainer,
-            isSender ? styles.senderContainer : styles.receiverContainer
-          ]}>
-            <View style={styles.profileImagePlaceholder}>
-              {!isSender && isLastInGroup && item.item_type !== 'action_log' && (
-                <Image
-                  style={styles.profileImage}
-                  source={{ uri: profilePicUrl }}
-                />
-              )}
-            </View>
-            {messageContent}
+            {item.reactions && (
+              <View>
+                {renderReactions(item.reactions, userProfiles, isSender)}
+              </View>
+            )}
           </View>
-        </View>
-      </Swipeable>
+        </Swipeable>
+      ) : null
     );
   };
 
