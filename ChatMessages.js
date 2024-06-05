@@ -15,7 +15,6 @@ import {
   renderActionLog,
   renderRepliedMessage,
   renderPlaceholder,
-  renderReactions
 } from './Renderer'; 
 import {formatTimestamp} from './utils'
 
@@ -55,21 +54,23 @@ const ChatMessages = ({ route, navigation }) => {
   useEffect(() => {
     const profiles = {};
     const userMapTemp = {};
+    userMapTemp[chatList.inviter.strong_id__] = chatList.inviter.username;
     chatList.users.forEach(user => {
       profiles[user.pk] = user.profile_pic_url;
       userMapTemp[user.pk] = user.username; 
     });
     setUserProfiles(profiles);
     setUserMap(userMapTemp); 
-  }, [chatList.users]);
+  }, [chatList.users, chatList.inviter]);
 
 useEffect(() => {
   const profiles = {};
+  profiles[chatList.inviter.strong_id__] = chatList.inviter.profile_pic_url;
   chatList.users.forEach(user => {
     profiles[user.strong_id__] = user.profile_pic_url;
   });
   setUserProfiles(profiles);
-}, [chatList.users]);
+}, [chatList.users, chatList.inviter]);
 
   useEffect(() => {
     setMessages(chatList.items.sort((a, b) => b.timestamp - a.timestamp));
@@ -237,7 +238,7 @@ useEffect(() => {
     } else {
       switch (item.item_type) {
         case 'text':
-          messageContent = renderTextMessage(item, profilePicUrl, isSender);
+          messageContent = renderTextMessage(item, profilePicUrl, isSender, navigation, userMap, userProfiles);
           break;
 
         case 'media':
@@ -326,11 +327,6 @@ useEffect(() => {
                 )}
               {messageContent}
             </View>
-            {item.reactions && (
-              <View>
-                {renderReactions(item.reactions, userProfiles, isSender)}
-              </View>
-            )}
           </View>
         </Swipeable>
       ) : null

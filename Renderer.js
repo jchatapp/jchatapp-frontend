@@ -2,20 +2,59 @@ import React from 'react';
 import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
 import { Video } from 'expo-av';
 
-export const renderTextMessage = (item, profilePicUrl, isSender) => (
+export const renderTextMessage = (item, profilePicUrl, isSender, navigation, userMap, profileMap) => {
+  const countEmojis = (emojis) => {
+    const countMap = {};
+    emojis.forEach(emoji => {
+      countMap[emoji.emoji] = (countMap[emoji.emoji] || 0) + 1;
+    });
+    return countMap;
+  };
+
+  const handlePressReactions = () => {
+    navigation.navigate('ReactionScreen', { reactions: item.reactions, userMap, profileMap });
+  };
+
+  const emojiCounts = item.reactions ? countEmojis(item.reactions.emojis) : {};
+  const totalReactions = Object.values(emojiCounts).reduce((acc, count) => acc + count, 0);
+  const emojiCountArray = Object.keys(emojiCounts).map(emoji => ({
+    emoji,
+    count: emojiCounts[emoji]
+  })).slice(0, 2);
+
+  const additionalMargin = Object.keys(emojiCounts).length > 0 ? 15 : 0;
+
+  return (
     <View style={[
-      styles.messageBox,
-      isSender ? styles.senderMessageBox : styles.receiverMessageBox
+        styles.messageBox,
+        isSender ? styles.senderMessageBox : styles.receiverMessageBox,
+        { marginBottom: additionalMargin }
     ]}>
-      <Text style={[
-        styles.messageText,
-        isSender ? styles.textWhite : styles.textBlack
-      ]}>
-        {item.text}
-      </Text>
+        <Text style={[
+            styles.messageText,
+            isSender ? styles.textWhite : styles.textBlack
+        ]}>
+            {item.text}
+        </Text>
+        {Object.keys(emojiCounts).length > 0 && (
+            <TouchableOpacity onPress={handlePressReactions} style={[
+                styles.reactionsContainer,
+                isSender ? styles.senderReactionsContainer : null
+            ]}>
+                {emojiCountArray.map(({ emoji }, index) => (
+                    <Text key={index} style={styles.emoji}>{emoji}</Text>
+                ))}
+                {totalReactions > 1 && (
+                    <Text style={styles.totalReactions}>{totalReactions}</Text>
+                )}
+            </TouchableOpacity>
+        )}
     </View>
   );
-  
+};
+
+
+
 export const renderImageMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
     const maxWidth = 200;
     const scale = width > maxWidth ? maxWidth / width : 1;
@@ -282,47 +321,8 @@ export const renderPlaceholder = () => {
   );
 }
 
-export const renderReactions = (reactions, userMap, isSender) => {
-  const containerStyle = [
-    styles.reactioncontainer,
-    { justifyContent: isSender ? 'flex-end' : 'flex-start',
-      paddingRight: isSender ? 10 : 0
-     }
-  ];
-
-  return (
-    <View style={containerStyle}>
-      <View style={styles.profileImagePlaceholder}>
-        {/* Placeholder or Image logic goes here */}
-      </View>
-      <View style={styles.reactionBubble}>
-        {reactions.emojis.map((emoji, index) => (
-          <Text key={index} style={styles.emojiText}>{emoji.emoji}</Text>
-        ))}
-      </View>
-    </View>
-  );
-};
 
 const styles = StyleSheet.create({
-  reactioncontainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'flex-start', 
-  },
-  reactionBubble: {
-    flexDirection: 'row',
-    backgroundColor: 'lightgray',
-    borderRadius: 15,
-    paddingHorizontal: 10,
-    paddingVertical: 1,
-    marginBottom: 5,
-    alignItems: 'center',
-    alignSelf: 'flex-start' 
-  },
-  emojiText: {
-    fontSize: 12
-  },
   profileImagePlaceholder: {
     width: 50,
     height: 10,
@@ -341,6 +341,29 @@ const styles = StyleSheet.create({
       height: '100%',
       position: 'absolute',
   },
+  reactionsContainer: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    flexDirection: 'row',
+    borderWidth: 1,
+    borderColor: "white",
+    backgroundColor: '#a9a9a9',
+    paddingHorizontal: 6,
+    paddingVertical: 5,
+    borderRadius: 15,
+    marginBottom: -20, 
+    marginRight: -20, 
+},
+emoji: {
+  fontSize: 12, 
+  marginHorizontal: 2, 
+},
+totalReactions: {
+  fontSize: 12,
+  color: 'white',
+  marginHorizontal: 3
+},
   storyOverlay: {
     flexDirection: 'row',
     flex: 1,
@@ -440,7 +463,7 @@ const styles = StyleSheet.create({
     backgroundColor: 'skyblue',
   },
   receiverMessageBox: {
-    backgroundColor: 'gray',
+    backgroundColor: '#a9a9a9',
     borderWidth: 1,
     borderColor: 'lightgray',
   },
@@ -558,5 +581,8 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666', 
     marginTop: 5
-  }
+  },
+  senderReactionsContainer: {
+    backgroundColor: 'skyblue',  // Light blue color for sender reactions
+  },
   });
