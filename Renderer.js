@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, Image, TouchableOpacity, StyleSheet } from 'react-native';
+import { View, Text, Image, TouchableOpacity, StyleSheet, Linking  } from 'react-native';
 import { Video } from 'expo-av';
 
 export const renderTextMessage = (item, profilePicUrl, isSender, navigation, userMap, profileMap) => {
@@ -55,6 +55,7 @@ export const renderTextMessage = (item, profilePicUrl, isSender, navigation, use
 
 
 
+
 export const renderImageMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
     const maxWidth = 200;
     const scale = width > maxWidth ? maxWidth / width : 1;
@@ -73,6 +74,29 @@ export const renderImageMessage = (url, profilePicUrl, isSender, width, height, 
         style={{ width: scaledWidth, height: scaledHeight, borderRadius: 10 }}
       />
     </TouchableOpacity>
+    );
+  };
+
+  const handleOpenURL = async (url) => {
+    const supported = await Linking.canOpenURL(url);
+    if (supported) {
+      Linking.openURL(url);
+    } else {
+      console.error("Don't know how to open URI: " + url);
+    }
+  };
+
+  export const renderLink = (item, isSender) => {
+    const { link_url, link_image_url, link_title } = item.link.link_context;
+  
+    return (
+      <TouchableOpacity onPress={() => handleOpenURL(link_url)} style={[styles.linkContainer, isSender ? styles.senderLink : styles.receiverLink]}>
+        <Image source={{ uri: link_image_url }} style={styles.linkImage} />
+        <View style={styles.linkTextContainer}>
+          <Text style={styles.linkTitle} numberOfLines={1} ellipsizeMode="tail">{link_title}</Text>
+          <Text style={styles.linkUrl} numberOfLines={1} ellipsizeMode="tail">{link_url}</Text>
+        </View>
+      </TouchableOpacity>
     );
   };
 
@@ -302,7 +326,6 @@ export const renderRepliedMessage = (repliedto, replier, message, item, profileP
       </View>
       <View style={styles.originalMessageContent}>
         {item.item_type === 'text' && renderTextMessage(item, profilePicUrl, isSender)}
-        {/* Add other cases if necessary */}
       </View>
     </View>
   )
@@ -321,6 +344,53 @@ export const renderPlaceholder = () => {
   );
 }
 
+
+export const renderXMAProfile = (item, isSender) => {
+  const title = item.xma_profile[0].header_title_text;
+  const subheader = item.xma_profile[0].header_subtitle_text;
+  const profilePicUrl = item.xma_profile[0].header_icon_url_info.fallback.url;
+  const urls = item.xma_profile[0].preview_extra_urls_info?.map(entry => entry.url) || [];
+  const targetUrl = item.xma_profile[0].target_url;
+
+  const handlePress = () => {
+    Linking.openURL(targetUrl);
+  };
+
+  return (
+    <TouchableOpacity style={styles.xmaProfileContainer} onPress={handlePress}>
+      <View style={styles.xmaProfileHeader}>
+        <Image style={styles.xmaProfileImage} source={{ uri: profilePicUrl }} />
+        <View style={styles.xmaProfileHeaderTextContainer}>
+          <Text style={styles.xmaProfileTitle}>{title}</Text>
+          {subheader && <Text style={styles.xmaProfileSubheader}>{subheader}</Text>}
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+};
+
+export const renderXMA = (item, isSender) => {
+  const title = item.xma.header_title_text;
+  const subheader = item.xma.header_subtitle_text;
+  const profilePicUrl = item.xma.header_icon_url;
+  const targetUrl = item.xma.target_url;
+
+  const handlePress = () => {
+    Linking.openURL(targetUrl);
+  };
+
+  return (
+    <TouchableOpacity style={styles.xmaProfileContainer} onPress={handlePress}>
+      <View style={styles.xmaProfileHeader}>
+        <Image style={styles.xmaProfileImage} source={{ uri: profilePicUrl }} />
+        <View style={styles.xmaProfileHeaderTextContainer}>
+          <Text style={styles.xmaProfileTitle}>{title}</Text>
+          {subheader && <Text style={styles.xmaProfileSubheader}>{subheader}</Text>}
+        </View>
+      </View>
+    </TouchableOpacity>
+  )
+};
 
 const styles = StyleSheet.create({
   profileImagePlaceholder: {
@@ -583,6 +653,109 @@ totalReactions: {
     marginTop: 5
   },
   senderReactionsContainer: {
-    backgroundColor: 'skyblue',  // Light blue color for sender reactions
+    backgroundColor: 'skyblue',  
   },
+  linkContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    backgroundColor: 'white',
+    elevation: 1, 
+    shadowColor: '#000', 
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    maxWidth: "70%"
+  },
+  senderLink: {
+    backgroundColor: '#e9f5ff',
+  },
+  receiverLink: {
+    backgroundColor: '#f0f0f0', 
+  },
+  linkImage: {
+    width: 50,
+    height: 50,
+    borderRadius: 10,
+    marginRight: 10,
+  },
+  linkTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  linkTitle: {
+    fontWeight: 'bold',
+    fontSize: 16,
+    marginBottom: 5,
+    overflow: 'hidden',
+  },
+  linkUrl: {
+    fontSize: 14,
+    color: '#555',
+    overflow: 'hidden',
+  },
+  xmaProfileContainer: {
+    alignItems: 'flex-start',
+    backgroundColor: '#f0f0f0',
+    width: 218,
+    maxHeight: 50,
+    borderRadius: 10,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 1.5,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    elevation: 1,
+  },
+  
+  xmaProfileHeader: {
+    flexDirection: 'row',
+    alignItems: 'flex-start', 
+  },
+  
+  xmaProfileImage: {
+    margin: 5,
+    marginLeft: 10,
+    width: 40,
+    height: 40,
+    borderRadius: 25,
+  },
+  
+  xmaProfileHeaderTextContainer: {
+    flex: 1, 
+    height: "100%",
+    flexDirection: 'column', 
+    justifyContent: 'center', 
+    alignItems: 'flex-start', 
+    paddingLeft: 5
+  },
+  centeredContent: {
+    alignItems: 'flex-start',  
+    justifyContent: 'center',   
+  },
+  xmaProfileTitle: {
+    fontSize: 13,
+    fontWeight: 'bold',
+    textAlign: 'flex-start', 
+  },
+  xmaProfileSubheader: {
+    fontSize: 10,
+    color: 'gray',
+    textAlign: 'flex-start' 
+  },
+  
+  xmaProfileImageGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+  },
+  
+  xmaProfileGridImage: {
+    width: 70,
+    height: 70,
+    margin: 1
+  }
   });

@@ -15,6 +15,9 @@ import {
   renderActionLog,
   renderRepliedMessage,
   renderPlaceholder,
+  renderLink,
+  renderXMAProfile,
+  renderXMA
 } from './Renderer'; 
 import {formatTimestamp} from './utils'
 
@@ -287,6 +290,18 @@ useEffect(() => {
         
         case 'placeholder':
           messageContent = renderPlaceholder();
+          break;
+        
+        case 'link':
+          messageContent = renderLink(item, isSender);
+          break;
+
+        case 'xma_profile':
+          messageContent = renderXMAProfile(item, isSender)
+          break;
+        
+        case 'xma':
+          messageContent = renderXMA(item, isSender)
           break;
         
         default:

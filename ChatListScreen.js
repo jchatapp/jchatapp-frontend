@@ -85,10 +85,25 @@ const ChatListScreen = ({ route, navigation }) => {
         throw new Error('Failed to fetch chat list');
       }
       const data = await response.json();
-      setChatList(data);
+      updateChatListWithNewMessages(data);
     } catch (error) {
       console.error('Failed to fetch chat list:', error);
     }
+  };
+
+  const updateChatListWithNewMessages = (newData) => {
+    setChatList(prevChatList => {
+      const updatedChatList = [...prevChatList];
+      newData.forEach(newItem => {
+        const existingIndex = updatedChatList.findIndex(item => item.thread_id === newItem.thread_id);
+        if (existingIndex > -1) {
+          updatedChatList[existingIndex] = newItem;
+        } else {
+          updatedChatList.push(newItem);
+        }
+      });
+      return updatedChatList;
+    });
   };
 
   const fetchChatMessages = async (threadId) => {
@@ -181,8 +196,8 @@ const ChatListScreen = ({ route, navigation }) => {
             </TouchableOpacity>
         </Animated.View>
     );
-};
-
+  };
+  
   const filteredChatList = chatList.filter(item =>
     item.thread_title.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -206,32 +221,34 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderChatItem = ({ item }) => (
-    <Swipeable
-      renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.thread_id)}
-    >
-      <TouchableOpacity onPress={() => handlePressChatItem(item)}>
-        <View style={styles.chatItem}>
-          {item.is_group ? (
-            <GroupProfilePics chatList={item} />
-          ) : (
-            <Image
-              style={styles.chatImage}
-              source={{ uri: item.users[0].profile_pic_url }}
-            />
-          )}
-          <View style={styles.textContainer}>
-            <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
-              {item.thread_title}
-            </Text>
-            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-              {item.last_permanent_item.text}
-            </Text>
+  const renderChatItem = ({ item }) => {
+    return (
+      <Swipeable
+        renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.thread_id)}
+      >
+        <TouchableOpacity onPress={() => handlePressChatItem(item)}>
+          <View style={styles.chatItem}>
+            {item.is_group ? (
+              <GroupProfilePics chatList={item} />
+            ) : (
+              <Image
+                style={styles.chatImage}
+                source={{ uri: item.users[0].profile_pic_url }}
+              />
+            )}
+            <View style={styles.textContainer}>
+              <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
+                {item.thread_title}
+              </Text>
+              <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+                {item.last_permanent_item.item_type === "text" ? item.last_permanent_item.text : "Attachment"}
+              </Text>
+            </View>
           </View>
-        </View>
-      </TouchableOpacity>
-    </Swipeable>
-  );
+        </TouchableOpacity>
+      </Swipeable>
+    );
+  };
 
   const renderUserInfo = () => (
     <View style={styles.userInfoContainer}>
