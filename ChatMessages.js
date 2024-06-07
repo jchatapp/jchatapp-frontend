@@ -20,6 +20,7 @@ import {
   renderXMA
 } from './Renderer'; 
 import {formatTimestamp} from './utils'
+import { Ionicons } from '@expo/vector-icons';
 
 const ChatMessages = ({ route, navigation }) => {
   const { chatList } = route.params;
@@ -223,6 +224,10 @@ useEffect(() => {
     );
   };
 
+  const handleSelectImage = () => {
+    console.log("Open image picker");
+  };
+
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
     const profilePicUrl = isSender ? senderPic : (userProfiles[item.user_id] || "default_profile_pic_url");
@@ -395,9 +400,14 @@ useEffect(() => {
             placeholder="Message..."
             placeholderTextColor="#888" 
           />
-          <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
+          {inputText ?
+            <TouchableOpacity style={styles.sendButton} onPress={sendMessage}>
+              <Ionicons name="send" size={24} color="white" />
+            </TouchableOpacity> :
+            <TouchableOpacity style={styles.sendButton} onPress={handleSelectImage}>
+              <Ionicons name="image-outline" size={24} color="white" />
+            </TouchableOpacity>
+          }
         </View>
       </View>
     </KeyboardAvoidingView>

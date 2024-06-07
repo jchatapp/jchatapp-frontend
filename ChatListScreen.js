@@ -18,6 +18,8 @@ const ChatListScreen = ({ route, navigation }) => {
   const isFocused = useIsFocused();
   const [polling, setPolling] = useState(true);
   const actionSheetRef = useRef();
+  const [chatMap, setChatMap] = useState({});
+  const [userMap, setUserMap] = useState({});
 
   const handleGearPress = () => {
     actionSheetRef.current.show();
@@ -79,32 +81,58 @@ const ChatListScreen = ({ route, navigation }) => {
   }, [polling]);
 
   const fetchChatList = async () => {
-    try {
-      const response = await fetch(config.API_URL + `/chats`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat list');
-      }
-      const data = await response.json();
-      updateChatListWithNewMessages(data);
-    } catch (error) {
-      console.error('Failed to fetch chat list:', error);
+  try {
+    const response = await fetch(config.API_URL + `/chats`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch chat list');
     }
-  };
+    const newData = await response.json();
+    processChatList(newData);
+  } catch (error) {
+    console.error('Failed to fetch chat list:', error);
+  }
+};
 
-  const updateChatListWithNewMessages = (newData) => {
-    setChatList(prevChatList => {
-      const updatedChatList = [...prevChatList];
-      newData.forEach(newItem => {
-        const existingIndex = updatedChatList.findIndex(item => item.thread_id === newItem.thread_id);
-        if (existingIndex > -1) {
-          updatedChatList[existingIndex] = newItem;
-        } else {
-          updatedChatList.push(newItem);
-        }
-      });
-      return updatedChatList;
+const processChatList = (newData) => {
+  setChatList(prevChatList => {
+    const newMap = { ...chatMap };
+    let listChanged = false;
+
+    newData.forEach(item => {
+      const lastItem = item.items[0] ? item.items[0].item_id : null;
+      if (!newMap[item.thread_id] || newMap[item.thread_id] !== lastItem) {
+        newMap[item.thread_id] = lastItem;
+        listChanged = true;
+      }
     });
-  };
+
+    if (listChanged) {
+      setChatMap(newMap);
+      processUserMap(newData);
+      return newData;  
+    }
+    return prevChatList;
+  });
+};
+
+const processUserMap = (chatData) => {
+  const newUserMap = { ...userMap };
+
+  chatData.forEach(chat => {
+    chat.users.forEach(user => {
+      if (!newUserMap[user.username]) {
+        newUserMap[user.username] = user.pk;
+      }
+    });
+  });
+
+  setUserMap(newUserMap);
+};
+
+const getUsernameById = (id) => {
+  const username = Object.keys(userMap).find(key => userMap[key] === id);
+  return username || 'Unknown User';
+};
 
   const fetchChatMessages = async (threadId) => {
     try {
@@ -222,6 +250,36 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const renderChatItem = ({ item }) => {
+    const getUsernameById = (userId) => userMap[userId] || 'Unknown';
+  
+    const renderItemContent = () => {
+      const { item_type, text, user_id, action_log } = item.last_permanent_item;
+  
+      switch (item_type) {
+        case "text":
+          return (
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+              {text}
+            </Text>
+          );
+        case "action_log":
+          return (
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+              {action_log.description}
+            </Text>
+          );
+          
+        default:
+          const username = getUsernameById(user_id);
+          const message = username === 'Unknown' ? "Sent an attachment" : `${username} sent an attachment`;
+          return (
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
+              {message}
+            </Text>
+          );
+      }
+    };
+  
     return (
       <Swipeable
         renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item.thread_id)}
@@ -240,9 +298,7 @@ const ChatListScreen = ({ route, navigation }) => {
               <Text style={[styles.chatTitle, item.read_state === 1 ? styles.boldText : null]}>
                 {item.thread_title}
               </Text>
-              <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-                {item.last_permanent_item.item_type === "text" ? item.last_permanent_item.text : "Attachment"}
-              </Text>
+              {renderItemContent()}
             </View>
           </View>
         </TouchableOpacity>
