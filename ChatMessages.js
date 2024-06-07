@@ -17,7 +17,8 @@ import {
   renderPlaceholder,
   renderLink,
   renderXMAProfile,
-  renderXMA
+  renderXMA,
+  renderPoll
 } from './Renderer'; 
 import {formatTimestamp} from './utils'
 import { Ionicons } from '@expo/vector-icons';
@@ -80,43 +81,50 @@ useEffect(() => {
     setMessages(chatList.items.sort((a, b) => b.timestamp - a.timestamp));
   }, [chatList.items]);
 
-  const fetchNewMessages = async () => {
+  const fetchNewMessagesAndUpdateExisting = async () => {
     if (loadingNewMessages) return;
     setLoadingNewMessages(true);
-    let updatedMessages = null;
+
     try {
-      const response = await axios.get(config.API_URL + `/chats/${chatList.thread_id}/new_messages`, {
-        params: { last_timestamp: lastTimestamp }
-      });
-      if (response.data && response.data.messages.length > 0) {
-        setMessages(currentMessages => {
-          const newUniqueMessages = response.data.messages.filter(msg => 
-            !messageIds.has(msg.item_id) && !msg.is_sent_by_viewer 
-          );
-  
-          newUniqueMessages.forEach(msg => messageIds.add(msg.item_id));
-  
-          updatedMessages = [...newUniqueMessages, ...currentMessages];
-          setLastTimestamp(updatedMessages[0].timestamp); 
-          return updatedMessages;
+        const response = await axios.get(config.API_URL + `/chats/${chatList.thread_id}/new_messages`, {
+            params: { last_timestamp: lastTimestamp }
         });
-      }
-      if (updatedMessages != null) {
-        await markAsSeen(chatList.thread_id, updatedMessages[0].item_id);
-      }
+
+        if (response.data && response.data.messages.length > 0) {
+            setMessages(currentMessages => {
+                const existingMessageMap = new Map(currentMessages.map(msg => [msg.item_id, msg]));
+                const updatesAndNewMessages = response.data.messages;
+
+                updatesAndNewMessages.forEach(message => {
+                    const existingMessage = existingMessageMap.get(message.item_id);
+                    if (existingMessage) {
+                        if (JSON.stringify(existingMessage) !== JSON.stringify(message)) {
+                            existingMessageMap.set(message.item_id, {...existingMessage, ...message});
+                        }
+                    } else {
+                        existingMessageMap.set(message.item_id, message);
+                    }
+                });
+                return Array.from(existingMessageMap.values()).sort((a, b) => b.timestamp - a.timestamp);
+            });
+
+            setLastTimestamp(response.data.messages[0].timestamp);
+
+            await markAsSeen(chatList.thread_id, response.data.messages[0].item_id);
+        }
     } catch (error) {
-      console.error('Failed to fetch new messages:', error);
-      await new Promise(resolve => setTimeout(resolve, 30000)); 
+        console.error('Failed to fetch new messages and updates:', error);
+        await new Promise(resolve => setTimeout(resolve, 30000)); 
     }
     setLoadingNewMessages(false);
-  };
-  
-  
-  useEffect(() => {
+};
+
+useEffect(() => {
     const interval = Math.floor(Math.random() * (10000 - 5000 + 1)) + 5000;
-    const intervalId = setInterval(fetchNewMessages, interval); 
-    return () => clearInterval(intervalId); 
-  }, [fetchNewMessages]);
+    fetchNewMessagesAndUpdateExisting();
+    const intervalId = setInterval(fetchNewMessagesAndUpdateExisting, interval); 
+    return () => clearInterval(intervalId);
+}, []);
   
   const GroupProfilePics = ({ chatList }) => {
   if (chatList.users.length < 2) {
@@ -211,6 +219,7 @@ useEffect(() => {
   };
 
   const renderRightActions = (progress, dragX, item) => {
+    const { date, time } = formatTimestamp(item.timestamp);
     const trans = dragX.interpolate({
       inputRange: [-100, 0],
       outputRange: [0, 100],
@@ -219,13 +228,17 @@ useEffect(() => {
   
     return (
       <Animated.View style={[styles.rightAction, { transform: [{ translateX: trans }] }]}>
-        <Text style={styles.actionText}>{formatTimestamp(item.timestamp)}</Text>
+        <Text style={styles.dateText}>{date}</Text>
+        <Text style={styles.timeText}>{time}</Text>
       </Animated.View>
     );
   };
-
   const handleSelectImage = () => {
     console.log("Open image picker");
+  };
+
+  const closeSwipeable = () => {
+    swipeableRef.current.close(); 
   };
 
   const renderItem = ({ item, index }) => {
@@ -233,15 +246,14 @@ useEffect(() => {
     const profilePicUrl = isSender ? senderPic : (userProfiles[item.user_id] || "default_profile_pic_url");
     const nextMessage = messages[index - 1]; 
     const prevMessage = messages[index + 1];
-    const isLastInGroup = !nextMessage || nextMessage.user_id !== item.user_id;
-    const isStartOfNewThread = !prevMessage || prevMessage.user_id !== item.user_id;
+    const isLastInGroup = !nextMessage || nextMessage.user_id !== item.user_id || nextMessage.item_type !== item.item_type;
+    const isStartOfNewThread = !prevMessage || prevMessage.user_id !== item.user_id || prevMessage.item_type !== item.item_type;
 
     let messageContent;
     if (item.replied_to_message) {
       const repliedTo = userMap[item.replied_to_message.user_id];
       const replier = userMap[item.user_id]
       const repliedToMessage = item.replied_to_message.text;
-      
       messageContent = renderRepliedMessage(repliedTo, replier, repliedToMessage, item, profilePicUrl, isSender)
     } else {
       switch (item.item_type) {
@@ -290,7 +302,9 @@ useEffect(() => {
           break;
 
         case 'action_log':
-          messageContent = renderActionLog(item.action_log.description);
+          if (!item.action_log.is_reaction_log) {
+            messageContent = renderActionLog(item.action_log.description);
+          }
           break;
         
         case 'placeholder':
@@ -309,48 +323,59 @@ useEffect(() => {
           messageContent = renderXMA(item, isSender)
           break;
         
+        case 'direct_group_poll_v1':
+          messageContent = renderPoll(item.direct_group_poll_v1[0].action_log.description)
+          break
+        
         default:
-          messageContent = <Text style={styles.messageText}>Unsupported message type</Text>;
+          messageContent = <Text style={styles.nsupportedmessageText}>Unsupported message type</Text>;
           break;
       }
     }
       
-    return (
-      !item.action_log || !item.action_log.is_reaction_log ? (
-        <Swipeable
-            ref={swipeableRef}
-            friction={2}
-            renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
-        >
-          <View>
-            {isStartOfNewThread && !isSender && chatList.is_group && item.item_type != "action_log" && (
-              <View style={styles.userNameHeader}>
-                <View style={styles.usernamePlaceHolder}></View>
-                <Text style={styles.userNameText}>
-                  {userMap[item.user_id] || 'Unknown User'}
-                </Text>
-              </View>
-            )}
-            <View style={[
-              styles.messageContainer,
-              isSender ? styles.senderContainer : styles.receiverContainer
-            ]}>
-              {item.item_type !== 'action_log' && (
-                  <View style={styles.profileImagePlaceholder}>
-                    {!isSender && isLastInGroup && (
-                      <Image
-                        style={styles.profileImage}
-                        source={{ uri: profilePicUrl }}
-                      />
-                    )}
-                  </View>
-                )}
-              {messageContent}
-            </View>
+    const content = (
+      <View>
+        {isStartOfNewThread && !isSender && chatList.is_group && item.item_type != "action_log" && item.item_type != 'direct_group_poll_v1' && (
+          <View style={styles.userNameHeader}>
+            <View style={styles.usernamePlaceHolder}></View>
+            <Text style={styles.userNameText}>
+              {userMap[item.user_id] || 'Unknown User'}
+            </Text>
           </View>
-        </Swipeable>
-      ) : null
+        )}
+        <View style={[
+          styles.messageContainer,
+          isSender ? styles.senderContainer : styles.receiverContainer
+        ]}>
+          {item.item_type !== 'action_log' && item.item_type !== 'direct_group_poll_v1' && (
+            <View style={styles.profileImagePlaceholder}>
+              {!isSender && isLastInGroup && (
+                <Image
+                  style={styles.profileImage}
+                  source={{ uri: profilePicUrl }}
+                />
+              )}
+            </View>
+          )}
+          {messageContent}
+        </View>
+      </View>
     );
+
+    if (item.item_type !== 'action_log' && item.item_type !== 'direct_group_poll_v1') {
+      return (
+        <Swipeable
+          ref={swipeableRef}
+          friction={2}
+          renderRightActions={(progress, dragX) => renderRightActions(progress, dragX, item)}
+          rightThreshold={1000}
+        >
+          {content}
+        </Swipeable>
+      );
+    } else {
+      return content;
+    }
   };
 
   return (
@@ -584,7 +609,19 @@ const styles = StyleSheet.create({
   },
   rightAction: {
     justifyContent: "center",
-    paddingHorizontal: 3
+    paddingHorizontal: 3,
+    backgroundColor: '#f0f0f0',
+    minWidth: 100, 
+  },
+  dateText: {
+    fontSize: 12,
+    color: 'gray',
+    textAlign: 'center',
+  },
+  timeText: {
+    fontSize: 10,
+    color: 'gray',
+    textAlign: 'center',
   }
 });
 

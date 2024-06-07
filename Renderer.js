@@ -101,17 +101,42 @@ export const renderImageMessage = (url, profilePicUrl, isSender, width, height, 
   };
 
   export const renderActionLog = (text) => {
+    const periodIndex = text.lastIndexOf('.');
+    const displayText = periodIndex !== -1 ? text.slice(0, periodIndex + 1) : text;
+  
     return (
       <View style={styles.centeredView}>
         <Text style={[
           styles.messageText,
           styles.centeredText
         ]}>
-          {text}
+          {displayText}
         </Text>
       </View>
-    )
+    );
   }
+
+  export const renderPoll = (text) => {
+    const periodIndex = text.lastIndexOf('.');
+    const displayText = periodIndex !== -1 ? text.slice(0, periodIndex + 1) : text;
+
+    return (
+      <View style={styles.centeredView}>
+        <Text style={[
+          styles.messageText,
+          styles.centeredText
+        ]}>
+          {displayText}
+        </Text>
+        {text.includes('created a poll') && (
+          <View style={styles.unsupportedMessageBox}>
+            <Text style={styles.unsupportedMessageText}>Unsupported message</Text>
+            <Text style={styles.unsupportedMessageSubText}>Use the Instagram mobile app to view this message.</Text>
+          </View>
+        )}
+      </View>
+    );
+}
 
 export const renderVideoMessage = (url, profilePicUrl, isSender, width, height, navigation) => {
   const maxWidth = 200; 
@@ -757,5 +782,28 @@ totalReactions: {
     width: 70,
     height: 70,
     margin: 1
+  },
+  unsupportedMessageBox: {
+    marginTop: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    backgroundColor: '#f0f0f0',
+    borderRadius: 5,
+    alignItems: 'flex-start',
+    justifyContent: 'center',
+  },
+  unsupportedMessageText: {
+    color: '#000',
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  
+  unsupportedMessageSubText: {
+    color: '#666',
+    fontSize: 12,
+    textAlign: 'center',
+    marginTop: 4,
   }
   });
