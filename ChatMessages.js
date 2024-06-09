@@ -328,7 +328,7 @@ useEffect(() => {
           break
         
         default:
-          messageContent = <Text style={styles.nsupportedmessageText}>Unsupported message type</Text>;
+          messageContent = <Text style={styles.unsupportedmessageText}>Unsupported message type</Text>;
           break;
       }
     }

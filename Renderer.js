@@ -638,7 +638,6 @@ totalReactions: {
   repliedMessageContainer: {
     backgroundColor: '#f0f0f0',
     borderRadius: 5,
-    padding: 5,
     maxWidth: '70%'
   },
   repliedToText: {
@@ -695,7 +694,7 @@ totalReactions: {
     maxWidth: "70%"
   },
   senderLink: {
-    backgroundColor: '#e9f5ff',
+    backgroundColor: 'skyblue',
   },
   receiverLink: {
     backgroundColor: '#f0f0f0', 

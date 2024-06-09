@@ -306,12 +306,21 @@ const getUsernameById = (id) => {
     );
   };
 
+  const getFeed = async () => {
+    try {
+      const response = await axios.get(config.API_URL + `/getFeed`)
+      console.log(response.data.posts[0].image_versions2)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+
   const renderUserInfo = () => (
     <View style={styles.userInfoContainer}>
       <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
       <View style={styles.userInfoTextContainer}>
         <Text style={styles.userName}>{userInfo.full_name}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => console.log('Edit close following')}>
+        <TouchableOpacity style={styles.button} onPress={() => getFeed()}>
           <Text style={styles.buttonText}>Edit close following</Text>
         </TouchableOpacity>
       </View>
