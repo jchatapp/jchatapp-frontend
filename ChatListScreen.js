@@ -115,34 +115,24 @@ const processChatList = (newData) => {
   });
 };
 
-  const processUserMap = (chatData) => {
-    const newUserMap = { ...userMap };
+const processUserMap = (chatData) => {
+  const newUserMap = { ...userMap };
 
-    chatData.forEach(chat => {
-      chat.users.forEach(user => {
-        if (!newUserMap[user.username]) {
-          newUserMap[user.username] = user.pk;
-        }
-      });
+  chatData.forEach(chat => {
+    chat.users.forEach(user => {
+      if (!newUserMap[user.username]) {
+        newUserMap[user.username] = user.pk;
+      }
     });
+  });
 
-    setUserMap(newUserMap);
-  };
+  setUserMap(newUserMap);
+};
 
-  const updateChatListWithNewMessages = (newData) => {
-    setChatList(prevChatList => {
-      const updatedChatList = [...prevChatList];
-      newData.forEach(newItem => {
-        const existingIndex = updatedChatList.findIndex(item => item.thread_id === newItem.thread_id);
-        if (existingIndex > -1) {
-          updatedChatList[existingIndex] = newItem;
-        } else {
-          updatedChatList.push(newItem);
-        }
-      });
-      return updatedChatList;
-    })
-  }
+const getUsernameById = (id) => {
+  const username = Object.keys(userMap).find(key => userMap[key] === id);
+  return username || 'Unknown User';
+};
 
   const fetchChatMessages = async (threadId) => {
     try {
@@ -316,21 +306,12 @@ const processChatList = (newData) => {
     );
   };
 
-  const getFeed = async () => {
-    try {
-      const response = await axios.get(config.API_URL + `/getFeed`)
-      console.log(response.data.posts[0].image_versions2)
-    } catch (error) {
-      console.error(error)
-    }
-  }
-
   const renderUserInfo = () => (
     <View style={styles.userInfoContainer}>
       <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
       <View style={styles.userInfoTextContainer}>
         <Text style={styles.userName}>{userInfo.full_name}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => getFeed()}>
+        <TouchableOpacity style={styles.button} onPress={() => console.log('Edit close following')}>
           <Text style={styles.buttonText}>Edit close following</Text>
         </TouchableOpacity>
       </View>
