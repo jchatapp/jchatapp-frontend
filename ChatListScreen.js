@@ -115,24 +115,34 @@ const processChatList = (newData) => {
   });
 };
 
-const processUserMap = (chatData) => {
-  const newUserMap = { ...userMap };
+  const processUserMap = (chatData) => {
+    const newUserMap = { ...userMap };
 
-  chatData.forEach(chat => {
-    chat.users.forEach(user => {
-      if (!newUserMap[user.username]) {
-        newUserMap[user.username] = user.pk;
-      }
+    chatData.forEach(chat => {
+      chat.users.forEach(user => {
+        if (!newUserMap[user.username]) {
+          newUserMap[user.username] = user.pk;
+        }
+      });
     });
-  });
 
-  setUserMap(newUserMap);
-};
+    setUserMap(newUserMap);
+  };
 
-const getUsernameById = (id) => {
-  const username = Object.keys(userMap).find(key => userMap[key] === id);
-  return username || 'Unknown User';
-};
+  const updateChatListWithNewMessages = (newData) => {
+    setChatList(prevChatList => {
+      const updatedChatList = [...prevChatList];
+      newData.forEach(newItem => {
+        const existingIndex = updatedChatList.findIndex(item => item.thread_id === newItem.thread_id);
+        if (existingIndex > -1) {
+          updatedChatList[existingIndex] = newItem;
+        } else {
+          updatedChatList.push(newItem);
+        }
+      });
+      return updatedChatList;
+    })
+  }
 
   const fetchChatMessages = async (threadId) => {
     try {

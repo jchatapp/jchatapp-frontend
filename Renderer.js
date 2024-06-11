@@ -101,16 +101,13 @@ export const renderImageMessage = (url, profilePicUrl, isSender, width, height, 
   };
 
   export const renderActionLog = (text) => {
-    const periodIndex = text.lastIndexOf('.');
-    const displayText = periodIndex !== -1 ? text.slice(0, periodIndex + 1) : text;
-  
     return (
       <View style={styles.centeredView}>
         <Text style={[
           styles.messageText,
           styles.centeredText
         ]}>
-          {displayText}
+          {text}
         </Text>
       </View>
     );
@@ -332,6 +329,64 @@ export const renderRavenMedia = (item, isSender, navigation) => {
   }
 };
 
+const renderRepliedMessageType = (item, profilePicUrl, isSender) => {
+  switch (item.replied_to_message.item_type) {
+    case 'text':
+      return renderTextMessage(item, profilePicUrl, isSender)
+
+    case 'clip':
+      const clip_imageUrl = item.replied_to_message.clip.clip.image_versions2.candidates[0].url;
+      return (
+        <View style={styles.clipAndTextContainer}>
+          <Image
+            source={{ uri: clip_imageUrl }}
+            style={styles.originalDimensionImage}
+          />
+          {renderTextMessage(item, profilePicUrl, isSender)}
+        </View>
+      );
+
+    case 'media':
+      const media_imageUrl = item.replied_to_message.media.image_versions2.candidates[0].url
+      return (
+        <View style={styles.clipAndTextContainer}>
+          <Image
+            source={{ uri: media_imageUrl }}
+            style={styles.originalDimensionImage}
+          />
+          {renderTextMessage(item, profilePicUrl, isSender)}
+        </View>
+      );
+
+      case 'media_share':
+        const media_share_imageUrl = item.replied_to_message.media_share.image_versions2.candidates[0].url
+        return (
+          <View style={styles.clipAndTextContainer}>
+            <Image
+              source={{ uri: media_share_imageUrl }}
+              style={styles.media_share_originalDimensionImage}
+            />
+            {renderTextMessage(item, profilePicUrl, isSender)}
+          </View>
+        );
+      
+      case 'story_share':
+        const story_share_imgeUrl = item.replied_to_message.story_share.media.image_versions2.candidates[0].url
+        return (
+          <View style={styles.clipAndTextContainer}>
+            <Image
+              source={{ uri: story_share_imgeUrl }}
+              style={styles.originalDimensionImage}
+            />
+            {renderTextMessage(item, profilePicUrl, isSender)}
+          </View>
+        );
+
+    default:
+      return <Text>Unsupported message type</Text>;
+  }
+}
+
 export const renderRepliedMessage = (repliedto, replier, message, item, profilePicUrl, isSender) => {
   if (!repliedto) {
     repliedto = "You"
@@ -344,13 +399,15 @@ export const renderRepliedMessage = (repliedto, replier, message, item, profileP
       <Text style={styles.repliedToText}>
         {replier} replied to {repliedto}
       </Text>
-      <View style={styles.repliedMessageContent}>
-        <Text style={styles.repliedMessageText}>
-          {message}
-        </Text>
-      </View>
+      {message && (
+        <View style={styles.repliedMessageContent}>
+          <Text style={styles.repliedMessageText}>
+            {message}
+          </Text>
+        </View>
+      )}
       <View style={styles.originalMessageContent}>
-        {item.item_type === 'text' && renderTextMessage(item, profilePicUrl, isSender)}
+        {renderRepliedMessageType(item, profilePicUrl, isSender)}
       </View>
     </View>
   )
@@ -638,7 +695,7 @@ totalReactions: {
   repliedMessageContainer: {
     backgroundColor: '#f0f0f0',
     borderRadius: 5,
-    maxWidth: '70%'
+    maxWidth: '100%'
   },
   repliedToText: {
     fontSize: 12,
@@ -798,11 +855,29 @@ totalReactions: {
     fontSize: 14,
     textAlign: 'center',
   },
-  
   unsupportedMessageSubText: {
     color: '#666',
     fontSize: 12,
     textAlign: 'center',
     marginTop: 4,
-  }
+  },
+  clipAndTextContainer: {
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    width: '100%',
+  },
+  originalDimensionImage: {
+    resizeMode: 'contain', 
+    width: 100, 
+    height: 150,
+    marginBottom: 5,
+    borderRadius: 15
+  },
+  media_share_originalDimensionImage: {
+    resizeMode: 'contain', 
+    width: 150, 
+    height: 150,
+    marginBottom: 5,
+    borderRadius: 15
+  },
   });

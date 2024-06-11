@@ -237,9 +237,6 @@ useEffect(() => {
     console.log("Open image picker");
   };
 
-  const closeSwipeable = () => {
-    swipeableRef.current.close(); 
-  };
 
   const renderItem = ({ item, index }) => {
     const isSender = item.is_sent_by_viewer; 
@@ -392,13 +389,20 @@ useEffect(() => {
               style={{ width: 20, height: 20 }}
             />
           </TouchableOpacity>
-          {chatList.is_group ? (
-            <GroupProfilePics chatList={chatList} />
-            ) : (
-                <Image source={{ uri: receiverPic }} 
-                    style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}
-                />
-            )}
+          <TouchableOpacity onPress={() => navigation.navigate('ChatSettings', {
+              navigation: navigation,
+              userMap: userMap,
+              userProfiles: userProfiles,
+              threadId: chatList.thread_id 
+          })}>
+            {chatList.is_group ? (
+              <GroupProfilePics chatList={chatList} />
+              ) : (
+                  <Image source={{ uri: receiverPic }} 
+                      style={{ width: 40, height: 40, borderRadius: 20, marginHorizontal: 10, marginVertical: 4}}
+                  />
+              )}
+          </TouchableOpacity>
           <Text style={styles.receiverName}>{receiverName}</Text>
         </View>
         <View style={styles.separatorLine}></View>
