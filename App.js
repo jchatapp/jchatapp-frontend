@@ -12,6 +12,7 @@ import ImageViewer from './ImageViewer';
 import NewMessageScreen from './NewMessageScreen';
 import ReactionScreen from './ReactionScreen';
 import ChatSettings from './ChatSettings';
+import AddUsertoList from './AddUsertoList'
 
 const Stack = createStackNavigator();
 
@@ -30,6 +31,7 @@ function App() {
         <Stack.Screen name="NewMessageScreen" component={NewMessageScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ReactionScreen" component={ReactionScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChatSettings" component={ChatSettings} options={{ headerShown: false }} />
+        <Stack.Screen name="AddUsertoList" component={AddUsertoList} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );

@@ -20,7 +20,8 @@ const LoginScreen = ({ navigation }) => {
       if (response.data.chatList) {
         const userInfo = response.data.userInfo;
         const chatList = response.data.chatList;
-        navigation.replace('ChatListScreen', { chatList, userInfo });
+        const userList = response.data.userList.usersList;
+        navigation.replace('ChatListScreen', { chatList, userInfo, userList });
       } else {
         console.error('Chat list not found in response');
         setErrorMessage('Login failed: Invalid username or password.'); 

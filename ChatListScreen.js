@@ -11,15 +11,15 @@ import { Swipeable } from 'react-native-gesture-handler';
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
+  const { userInfo, userList } = route.params;
+  const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
   const [searchQuery, setSearchQuery] = useState('');
-  const [chatList, setChatList] = useState(route.params.chatList);
-  const { userInfo } = route.params;
-  const isFocused = useIsFocused();
   const [polling, setPolling] = useState(true);
-  const actionSheetRef = useRef();
   const [chatMap, setChatMap] = useState({});
   const [userMap, setUserMap] = useState({});
+  const actionSheetRef = useRef();
+  const isFocused = useIsFocused();
 
   const handleGearPress = () => {
     actionSheetRef.current.show();
@@ -51,15 +51,19 @@ const ChatListScreen = ({ route, navigation }) => {
       console.error('Failed to logout:', error.message);
     }
   };
-  
+
   const handleActionSheetPress = (index) => {   
     if (index === 1) { 
       handleLogout()
     }
   };
-
+  
   const handleAddPress = () => {
-    navigation.navigate('NewMessageScreen', { userInfo });
+    if (activeTab == 'messages') {
+      navigation.navigate('NewMessageScreen', { userInfo });  
+    } else {
+      navigation.navigate('AddUsertoList', {userInfo});
+    }  
   };
 
   useEffect(() => {
@@ -127,11 +131,6 @@ const processUserMap = (chatData) => {
   });
 
   setUserMap(newUserMap);
-};
-
-const getUsernameById = (id) => {
-  const username = Object.keys(userMap).find(key => userMap[key] === id);
-  return username || 'Unknown User';
 };
 
   const fetchChatMessages = async (threadId) => {
@@ -306,6 +305,18 @@ const getUsernameById = (id) => {
     );
   };
 
+  const renderUserItem = ({ item }) => {
+    console.log(item)
+    return (
+      <View style={styles.itemContainer}>
+        <Image style={styles.profileImageUserList} source={{ uri: item.profile_pic_url }} />
+          <View style={styles.textContainerUserList}>
+            <Text style={styles.usernameUserList}>{item.username}</Text>
+          </View>
+      </View>
+    );
+  };
+
   const renderUserInfo = () => (
     <View style={styles.userInfoContainer}>
       <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
@@ -350,8 +361,8 @@ const getUsernameById = (id) => {
       <View style={styles.separatorLine}></View>
       <View style={styles.tabsContainer}>
         <TouchableOpacity
-          style={[styles.tab, activeTab === 'empty' && styles.activeTab]}
-          onPress={() => setActiveTab('empty')}
+          style={[styles.tab, activeTab === 'activity' && styles.activeTab]}
+          onPress={() => setActiveTab('activity')}
         >
           <Text style={styles.tabText}>Activity</Text>
         </TouchableOpacity>
@@ -379,9 +390,13 @@ const getUsernameById = (id) => {
       ) : (
         <View style={styles.activityContainer}>
           {renderUserInfo()}
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>No content available.</Text>
-          </View>
+          <View style={styles.separatorLine}></View>
+          <FlatList
+            data={userList}
+            renderItem={renderUserItem}
+            keyExtractor={item => item.pk}  
+            contentContainerStyle={styles.listContainer}
+          />
         </View>
       )}
     </View>
@@ -544,6 +559,35 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center'     
   },
+  listContainer: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    width: '100%'
+  },
+  itemContainer: {
+    flexDirection: 'row',
+    padding: 10,
+    marginVertical: 5,
+    minWidth: '100%'
+  },
+  textContainerUserList: {
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center'
+  },
+  profileImageUserList: {
+    width: 70,
+    height: 70,
+    borderRadius: 35,
+    borderWidth: 1, 
+    borderColor: '#d3d3d3', 
+  },
+  usernameUserList: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginLeft: 20
+  }
   
 });
 
