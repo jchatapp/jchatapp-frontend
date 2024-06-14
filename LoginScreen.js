@@ -20,7 +20,7 @@ const LoginScreen = ({ navigation }) => {
       if (response.data.chatList) {
         const userInfo = response.data.userInfo;
         const chatList = response.data.chatList;
-        const userList = response.data.userList.usersList;
+        const userList = response.data.userList;
         navigation.replace('ChatListScreen', { chatList, userInfo, userList });
       } else {
         console.error('Chat list not found in response');

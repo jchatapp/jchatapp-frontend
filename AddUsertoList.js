@@ -15,15 +15,17 @@ const AddUsertoList = ({ route, navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
 
   const addUsertoList = async () => {
-    console.log(userInfo.pk_id)
     try {
-      const response = await axios.post(config.API_URL + '/addusertolist', {
+      await axios.post(config.API_URL + '/addusertolist', {
         userId: userInfo.pk_id,
         usersList: selectedUsers
       });
-      console.log(response.data) 
+      if (route.params.onGoBack) {
+        route.params.onGoBack(); 
+      }
+      navigation.goBack();
     } catch (error) {
-      console.error(error) 
+      console.error(error); 
     }    
   }
 
@@ -31,7 +33,6 @@ const AddUsertoList = ({ route, navigation }) => {
     if (debounceTimeout) {
       clearTimeout(debounceTimeout);
     }
-
     setDebounceTimeout(
       setTimeout(() => {
         searchUsers();
@@ -65,18 +66,6 @@ const AddUsertoList = ({ route, navigation }) => {
     }
   };
 
-  const fetchChatMessages = async (threadId) => {
-    try {
-      const response = await fetch(config.API_URL + `/chats/${threadId}`);
-      if (!response.ok) {
-        throw new Error('Failed to fetch chat messages');
-      }
-      return await response.json();  
-    } catch (error) {
-      console.error('Failed to fetch chat messages:', error);
-    }
-  };
-
   const handlePressUser = (user) => {
     setSelectedUsers(prevState => {
       if (prevState.some(selectedUser => selectedUser.pk === user.pk)) {
@@ -90,21 +79,6 @@ const AddUsertoList = ({ route, navigation }) => {
   const handleRemoveSelectedUser = (user) => {
     setSelectedUsers(prevState => prevState.filter(selectedUser => selectedUser.pk !== user.pk));
   };
-
-  const createChat = async () => {
-    try {
-      const response = await axios.post(config.API_URL + `/createchat`, {
-        users: selectedUsers,
-        message: messageText
-      });
-      const chatMessages = await fetchChatMessages(response.data.thread.threadId)
-      if (chatMessages) {
-        navigation.replace('ChatMessages', { chatList: chatMessages });
-      }
-  } catch (error) {
-    console.error(error)
-  }
-}
 
   const renderSelectedUserItem = ({ item }) => (
     <View style={styles.selectedUserItem}>
@@ -178,7 +152,7 @@ const AddUsertoList = ({ route, navigation }) => {
         )}
       </View>
       {selectedUsers.length > 0 && (
-        <TouchableOpacity onPress={() => addUsertoList()} style={styles.createChatButton}>
+        <TouchableOpacity onPress={addUsertoList} style={styles.createChatButton}>
           <Text style={styles.sendButtonText}>Add User</Text>
         </TouchableOpacity>
       )}

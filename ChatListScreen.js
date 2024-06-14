@@ -11,7 +11,8 @@ import { Swipeable } from 'react-native-gesture-handler';
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
-  const { userInfo, userList } = route.params;
+  const { userInfo } = route.params;
+  const [userList, setUserList] = useState(route.params.userList.usersList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
   const [searchQuery, setSearchQuery] = useState('');
@@ -21,19 +22,9 @@ const ChatListScreen = ({ route, navigation }) => {
   const actionSheetRef = useRef();
   const isFocused = useIsFocused();
 
-  const handleGearPress = () => {
-    actionSheetRef.current.show();
-  };
-
   const handleLogout = async () => {
     try {
-      const response = await axios.post(config.API_URL + '/logout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        }
-      });
-      
+      const response = await axios.post(config.API_URL + '/logout');
       if (response.status === 200) {
         navigation.dispatch(
           CommonActions.reset({
@@ -52,6 +43,10 @@ const ChatListScreen = ({ route, navigation }) => {
     }
   };
 
+  const handleGearPress = () => {
+    actionSheetRef.current.show();
+  };
+
   const handleActionSheetPress = (index) => {   
     if (index === 1) { 
       handleLogout()
@@ -62,19 +57,21 @@ const ChatListScreen = ({ route, navigation }) => {
     if (activeTab == 'messages') {
       navigation.navigate('NewMessageScreen', { userInfo });  
     } else {
-      navigation.navigate('AddUsertoList', {userInfo});
+      navigation.navigate('AddUsertoList', {userInfo, onGoBack: fetchUserList});
     }  
   };
 
+  // Set Polling to false when not on ChatListScreen
   useEffect(() => {
-    if (isFocused) {
+    if (isFocused && activeTab === 'messages') {
       fetchChatList();
       setPolling(true);
     } else {
       setPolling(false);
     }
-  }, [isFocused]);
+  }, [isFocused, activeTab]);
 
+  // Set polling interval for 10s
   useEffect(() => {
     if (polling) {
       const interval = setInterval(() => {
@@ -84,55 +81,85 @@ const ChatListScreen = ({ route, navigation }) => {
     }
   }, [polling]);
 
+  // Call igClient.feed.directInbox().items() asynchronously
   const fetchChatList = async () => {
-  try {
-    const response = await fetch(config.API_URL + `/chats`);
-    if (!response.ok) {
-      throw new Error('Failed to fetch chat list');
-    }
-    const newData = await response.json();
-    processChatList(newData);
-  } catch (error) {
-    console.error('Failed to fetch chat list:', error);
-  }
-};
-
-const processChatList = (newData) => {
-  setChatList(prevChatList => {
-    const newMap = { ...chatMap };
-    let listChanged = false;
-
-    newData.forEach(item => {
-      const lastItem = item.items[0] ? item.items[0].item_id : null;
-      if (!newMap[item.thread_id] || newMap[item.thread_id] !== lastItem) {
-        newMap[item.thread_id] = lastItem;
-        listChanged = true;
+    try {
+      const response = await fetch(config.API_URL + `/chats`);
+      if (!response.ok) {
+        throw new Error('Failed to fetch chat list');
       }
+      const newData = await response.json();
+      processChatList(newData);
+    } catch (error) {
+      console.error('Failed to fetch chat list:', error);
+    }
+  };
+
+  const processChatList = (newData) => {
+    setChatList(prevChatList => {
+      const newMap = { ...chatMap };
+      let listChanged = false;
+
+      newData.forEach(item => {
+        const lastItem = item.items[0] ? item.items[0].item_id : null;
+        if (!newMap[item.thread_id] || newMap[item.thread_id] !== lastItem) {
+          newMap[item.thread_id] = lastItem;
+          listChanged = true;
+        }
+      });
+
+      if (listChanged) {
+        setChatMap(newMap);
+        processUserMap(newData);
+        return newData;  
+      }
+      return prevChatList;
+    });
+  };
+
+  const processUserMap = (chatData) => {
+    const newUserMap = { ...userMap };
+
+    chatData.forEach(chat => {
+      chat.users.forEach(user => {
+        if (!newUserMap[user.username]) {
+          newUserMap[user.username] = user.pk;
+        }
+      });
     });
 
-    if (listChanged) {
-      setChatMap(newMap);
-      processUserMap(newData);
-      return newData;  
-    }
-    return prevChatList;
-  });
-};
+    setUserMap(newUserMap);
+  };
 
-const processUserMap = (chatData) => {
-  const newUserMap = { ...userMap };
+  const updateChatList = (threadId) => {
+    setChatList(prevChatList =>
+      prevChatList.map(chat =>
+        chat.thread_id === threadId ? { ...chat, read_state: 0 } : chat
+      )
+    );
+  };
 
-  chatData.forEach(chat => {
-    chat.users.forEach(user => {
-      if (!newUserMap[user.username]) {
-        newUserMap[user.username] = user.pk;
+  //get usersList from db where key = userInfo.pk
+  const fetchUserList = async () => {
+    try {
+      const response = await fetch(config.API_URL + `/getUserList`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ userId: userInfo.pk }) 
+      });
+      if (!response.ok) {
+        throw new Error('Failed to fetch user list');
       }
-    });
-  });
+      const newData = await response.json();
+      setUserList(newData.response.usersList); 
+    } catch (error) {
+      console.error('Failed to fetch user list:', error);
+    }
+  };
 
-  setUserMap(newUserMap);
-};
-
+  // fetch chat messages on click of given chat
   const fetchChatMessages = async (threadId) => {
     try {
       const response = await fetch(config.API_URL + `/chats/${threadId}`);
@@ -145,6 +172,7 @@ const processUserMap = (chatData) => {
     }
   };
 
+  // Mark unread chat as seen, pass in threadID, itemID of most recent item
   const markAsSeen = async (threadId, itemId) => {
     try {
       await fetch(config.API_URL + `/chats/${threadId}/seen`, {
@@ -171,13 +199,6 @@ const processUserMap = (chatData) => {
     }
   };
 
-  const updateChatList = (threadId) => {
-    setChatList(prevChatList =>
-      prevChatList.map(chat =>
-        chat.thread_id === threadId ? { ...chat, read_state: 0 } : chat
-      )
-    );
-  };
 
   const deleteChat = async (threadId) => {
     try {
@@ -193,6 +214,7 @@ const processUserMap = (chatData) => {
     }
   };
 
+  // render delete button on left swipe of chat
   const renderRightActions = (progress, dragX, threadId) => {
     const scale = dragX.interpolate({
         inputRange: [-100, 0],
@@ -207,21 +229,15 @@ const processUserMap = (chatData) => {
     });
 
     return (
-        <Animated.View style={[styles.rightAction, { opacity: opacity }]}>
-            <TouchableOpacity
-                onPress={() => deleteChat(threadId)}
-                style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-            >
-                <Animated.Text
-                    style={[
-                        styles.actionText,
-                        { transform: [{ scale: scale }] }
-                    ]}
-                >
-                    Delete
-                </Animated.Text>
-            </TouchableOpacity>
-        </Animated.View>
+      <Animated.View style={[styles.rightAction, { opacity: opacity }]}>
+          <TouchableOpacity
+              onPress={() => deleteChat(threadId)}
+              style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+            <Animated.Text style={[styles.actionText,{ transform: [{ scale: scale }] }]}>
+              Delete
+            </Animated.Text>
+          </TouchableOpacity>
+      </Animated.View>
     );
   };
   
@@ -306,12 +322,13 @@ const processUserMap = (chatData) => {
   };
 
   const renderUserItem = ({ item }) => {
-    console.log(item)
+    const profile_pic_url = item.profile_pic_url
+    const username = item.username
     return (
-      <View style={styles.itemContainer}>
-        <Image style={styles.profileImageUserList} source={{ uri: item.profile_pic_url }} />
+      <View style={styles.itemContainerforitems}>
+        <Image style={styles.profileImageUserList} source={{ uri: profile_pic_url }} />
           <View style={styles.textContainerUserList}>
-            <Text style={styles.usernameUserList}>{item.username}</Text>
+            <Text style={styles.usernameUserList}>{username}</Text>
           </View>
       </View>
     );
@@ -390,13 +407,20 @@ const processUserMap = (chatData) => {
       ) : (
         <View style={styles.activityContainer}>
           {renderUserInfo()}
-          <View style={styles.separatorLine}></View>
-          <FlatList
-            data={userList}
-            renderItem={renderUserItem}
-            keyExtractor={item => item.pk}  
-            contentContainerStyle={styles.listContainer}
-          />
+            {userList ? (
+              <View style={styles.itemContainer}>
+              <FlatList
+              data={userList}
+              renderItem={renderUserItem}
+              keyExtractor={item => item.pk}  
+              contentContainerStyle={styles.listContainer}
+            />
+            </View>
+          ): 
+          <View style={styles.emptyUserListContainer}>
+            <Text style={styles.noUserEmptyText}>Use the + Button on the top right to keep track of your favourite accounts</Text>
+          </View>
+            }
         </View>
       )}
     </View>
@@ -559,22 +583,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center'     
   },
-  listContainer: {
-    flexGrow: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%'
-  },
   itemContainer: {
     flexDirection: 'row',
-    padding: 10,
-    marginVertical: 5,
-    minWidth: '100%'
+    paddingHorizontal: 10,
+    minWidth: '100%',
+    maxHeight: '70%'
+  },
+  itemContainerforitems: {
+    flexDirection: 'row',
+    paddingHorizontal: 10,
+    width: '100%',
+    alignItems: 'center',
+    minHeight: 80, 
   },
   textContainerUserList: {
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center'
+    justifyContent: 'flex-start',
+    alignItems: 'flex-start',
+    flex: 1, 
   },
   profileImageUserList: {
     width: 70,
@@ -587,8 +612,17 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 20
+  },
+  emptyUserListContainer: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: 40
+  },
+  noUserEmptyText: {
+    fontSize: 14,
+    color: 'gray',
+    textAlign: 'center'
   }
-  
 });
 
 export default ChatListScreen;
