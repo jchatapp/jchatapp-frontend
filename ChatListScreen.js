@@ -12,6 +12,7 @@ LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
+  const userpk = userInfo.pk
   const [userList, setUserList] = useState(route.params.userList.usersList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
@@ -321,30 +322,23 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderUserItem = ({ item }) => {
-    const profile_pic_url = item.profile_pic_url
-    const username = item.username
+  const renderUserInfo = () => {
+    console.log(userInfo.username);
+    console.log(userInfo.follower_count, userInfo.following_count);
     return (
-      <View style={styles.itemContainerforitems}>
-        <Image style={styles.profileImageUserList} source={{ uri: profile_pic_url }} />
-          <View style={styles.textContainerUserList}>
-            <Text style={styles.usernameUserList}>{username}</Text>
-          </View>
+      <View style={styles.userInfoContainer}>
+        <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
+        <View style={styles.userInfoTextContainer}>
+          <Text style={styles.userName}>{userInfo.username}</Text>
+          <Text style={styles.userStats}>Followers: {userInfo.follower_count} | Following: {userInfo.following_count}</Text>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {userList, userpk, onGoBack: fetchUserList})}>
+            <Text style={styles.buttonText}>Edit close following</Text>
+          </TouchableOpacity>
+        </View>
       </View>
     );
   };
-
-  const renderUserInfo = () => (
-    <View style={styles.userInfoContainer}>
-      <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
-      <View style={styles.userInfoTextContainer}>
-        <Text style={styles.userName}>{userInfo.full_name}</Text>
-        <TouchableOpacity style={styles.button} onPress={() => console.log('Edit close following')}>
-          <Text style={styles.buttonText}>Edit close following</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
+  
 
   return (
     <View style={styles.container}>
@@ -407,20 +401,6 @@ const ChatListScreen = ({ route, navigation }) => {
       ) : (
         <View style={styles.activityContainer}>
           {renderUserInfo()}
-            {userList ? (
-              <View style={styles.itemContainer}>
-              <FlatList
-              data={userList}
-              renderItem={renderUserItem}
-              keyExtractor={item => item.pk}  
-              contentContainerStyle={styles.listContainer}
-            />
-            </View>
-          ): 
-          <View style={styles.emptyUserListContainer}>
-            <Text style={styles.noUserEmptyText}>Use the + Button on the top right to keep track of your favourite accounts</Text>
-          </View>
-            }
         </View>
       )}
     </View>
@@ -533,6 +513,11 @@ const styles = StyleSheet.create({
     fontSize: 24,
     fontWeight: 'bold',
     marginVertical: 5,
+  },
+  userStats: {
+    fontSize: 16,
+    color: 'gray',
+    marginBottom: 10,
   },
   button: {
     backgroundColor: '#ff4757',

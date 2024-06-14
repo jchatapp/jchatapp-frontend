@@ -9,11 +9,11 @@ const LoginScreen = ({ navigation }) => {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
 
+  //Log in with Instagram credentials
   const handleLogin = async () => {
     if (isLoading) return;
     setIsLoading(true);
     setErrorMessage(''); 
-
     try {
       const response = await axios.post(config.API_URL + '/login', { username, password });
       setIsLoading(false);
@@ -23,15 +23,11 @@ const LoginScreen = ({ navigation }) => {
         const userList = response.data.userList;
         navigation.replace('ChatListScreen', { chatList, userInfo, userList });
       } else {
-        console.error('Chat list not found in response');
         setErrorMessage('Login failed: Invalid username or password.'); 
       }
     } catch (error) {
-      console.error(error)
       setIsLoading(false);
-      console.error('Full error:', error);
       const errorMessage = error.response?.data?.error || error.message || 'Unknown error occurred';
-      console.error('Login failed:', errorMessage);
       setErrorMessage(errorMessage); 
     }
   };

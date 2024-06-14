@@ -371,13 +371,20 @@ const renderRepliedMessageType = (item, profilePicUrl, isSender) => {
         );
       
       case 'story_share':
-        const story_share_imgeUrl = item.replied_to_message.story_share.media.image_versions2.candidates[0].url
+        let story_share_imgeUrl;
+        if (item.replied_to_message.story_share.media) {
+          story_share_imgeUrl = item.replied_to_message.story_share.media.image_versions2.candidates[0].url
+        }
         return (
           <View style={styles.clipAndTextContainer}>
-            <Image
+            {story_share_imgeUrl ? (
+              <Image
               source={{ uri: story_share_imgeUrl }}
               style={styles.originalDimensionImage}
             />
+            ) : (
+              <View></View>
+            )}
             {renderTextMessage(item, profilePicUrl, isSender)}
           </View>
         );
