@@ -13,7 +13,8 @@ LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
   const userpk = userInfo.pk
-  const [userList, setUserList] = useState(route.params.userList.usersList);
+  const initialUserList = route.params.userList ? route.params.userList.usersList : [];
+  const [userList, setUserList] = useState(initialUserList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
   const [searchQuery, setSearchQuery] = useState('');
@@ -22,7 +23,8 @@ const ChatListScreen = ({ route, navigation }) => {
   const [userMap, setUserMap] = useState({});
   const actionSheetRef = useRef();
   const isFocused = useIsFocused();
-
+  const isFocusedActivity = useIsFocused();
+  
   const handleLogout = async () => {
     try {
       const response = await axios.post(config.API_URL + '/logout');
@@ -139,6 +141,12 @@ const ChatListScreen = ({ route, navigation }) => {
       )
     );
   };
+
+  useEffect(() => {
+    if (isFocusedActivity) {
+      fetchUserList();
+    }
+  }, [isFocused]);
 
   //get usersList from db where key = userInfo.pk
   const fetchUserList = async () => {
@@ -323,22 +331,35 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const renderUserInfo = () => {
-    console.log(userInfo.username);
-    console.log(userInfo.follower_count, userInfo.following_count);
     return (
       <View style={styles.userInfoContainer}>
         <Image style={styles.profileImage} source={{ uri: userInfo.profile_pic_url }} />
         <View style={styles.userInfoTextContainer}>
           <Text style={styles.userName}>{userInfo.username}</Text>
           <Text style={styles.userStats}>Followers: {userInfo.follower_count} | Following: {userInfo.following_count}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {userList, userpk, onGoBack: fetchUserList})}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {userList, userpk, fetchUserList})}>
             <Text style={styles.buttonText}>Edit close following</Text>
           </TouchableOpacity>
         </View>
       </View>
     );
   };
-  
+
+  const renderUserItem = ({ item }) => (
+    <TouchableOpacity onPress={() => updateTimestamp(item)}>
+        <View style={styles.itemContainerforitems}>
+        <Image style={styles.profileImageUserList} source={{ uri: item.profile_pic_url }} />
+        <View style={styles.textContainerUserList}>
+          <Text style={styles.usernameUserList}>{item.username}</Text>
+          <Text style={styles.userListInforText}>No New Posts</Text>
+        </View>
+      </View>
+    </TouchableOpacity>
+  );
+
+  function updateTimestamp(item) {
+    console.log(item)
+  }
 
   return (
     <View style={styles.container}>
@@ -399,11 +420,27 @@ const ChatListScreen = ({ route, navigation }) => {
           />
         </>
       ) : (
-        <View style={styles.activityContainer}>
+        <>
           {renderUserInfo()}
-        </View>
+          {userList.length === 0 ? (
+            <View style={styles.emptyUserListContainer}>
+              <Text style={styles.noUserEmptyText}>User list is empty</Text>
+            </View>
+          ) : (
+            <FlatList
+              data={userList}
+              keyExtractor={(item) => item.pk.toString()}
+              renderItem={renderUserItem}
+              ListEmptyComponent={() => (
+                <View style={styles.emptyUserListContainer}>
+                  <Text style={styles.noUserEmptyText}>No users found</Text>
+                </View>
+              )}
+            />
+          )}
+        </>
       )}
-    </View>
+      </View>
   );
 };
 
@@ -501,8 +538,8 @@ const styles = StyleSheet.create({
     padding: 10,
   },
   profileImage: {
-    width: 100,
-    height: 100,
+    width: 90,
+    height: 90,
     borderRadius: 50,
     marginRight: 20,
   },
@@ -510,7 +547,7 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   userName: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: 'bold',
     marginVertical: 5,
   },
@@ -597,6 +634,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: 'bold',
     marginLeft: 20
+  },
+  userListInforText: {
+    fontSize: 14,
+    marginLeft: 20,
+    color: 'gray'
   },
   emptyUserListContainer: {
     justifyContent: 'center',
