@@ -22,3 +22,9 @@ export function formatTimestamp(timestampMicro) {
     time: formattedTime
   };
 }
+
+export function getCurrentTimestampMicro() {
+  const date = new Date();
+  const timestampMicro = date.getTime() * 1000;
+  return timestampMicro.toString();
+}
