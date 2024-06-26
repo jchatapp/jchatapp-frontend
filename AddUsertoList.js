@@ -13,20 +13,36 @@ const AddUsertoList = ({ route, navigation }) => {
   const [noUserFound, setNoUserFound] = useState(false);
   const [debounceTimeout, setDebounceTimeout] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [privateUsers, setPrivateUsers] = useState([])
 
   const addUsertoList = async () => {
     try {
+      const privateUserList = checkPrivateUsers(selectedUsers);
+      if (privateUserList.length > 0) {
+        throw new Error(`Cannot add private users you are not following: ${privateUserList.join(', ')}`);
+      }
       await axios.post(config.API_URL + '/addusertolist', {
         userId: userInfo.pk_id,
         usersList: selectedUsers
       });
       if (route.params.onGoBack) {
-        route.params.onGoBack(); 
+        route.params.onGoBack();
       }
       navigation.goBack();
     } catch (error) {
-      console.error(error); 
-    }    
+      alert(error.message); 
+    }
+  };
+
+  function checkPrivateUsers(selectedUsers) {
+    let tempPrivateUsers = [];
+    for (const user of selectedUsers) {
+      if (!user.friendship_status.following && user.friendship_status.is_private) {
+        tempPrivateUsers.push(user.username);
+      }
+    }
+    setPrivateUsers(prevUsers => [...prevUsers, ...tempPrivateUsers]);
+    return tempPrivateUsers;
   }
 
   useEffect(() => {
