@@ -7,13 +7,14 @@ import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
 import config from './config';
 import { Swipeable } from 'react-native-gesture-handler';
-
+import {getCurrentTimestampMicro} from './utils'
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
   const userpk = userInfo.pk
   const initialUserList = route.params.userList ? route.params.userList.usersList : [];
+  const userPostList = route.params.userPostList
   const [userList, setUserList] = useState(initialUserList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
@@ -57,11 +58,7 @@ const ChatListScreen = ({ route, navigation }) => {
   };
   
   const handleAddPress = () => {
-    if (activeTab == 'messages') {
-      navigation.navigate('NewMessageScreen', { userInfo });  
-    } else {
-      navigation.navigate('AddUsertoList', {userInfo, onGoBack: fetchUserList});
-    }  
+    navigation.navigate('NewMessageScreen', { userInfo });  
   };
 
   // Set Polling to false when not on ChatListScreen
@@ -357,8 +354,18 @@ const ChatListScreen = ({ route, navigation }) => {
     </TouchableOpacity>
   );
 
-  function updateTimestamp(item) {
-    console.log(item)
+  async function updateTimestamp(item) {
+    try {
+      const response = await axios.post(config.API_URL + '/setTimestampandSeen', {
+        userpk: userpk,
+        itempk: item.pk,
+        lastSeenTimestamp: getCurrentTimestampMicro()
+      })
+      
+      console.log(userPostList)
+    } catch(error) {
+      console.error(error)
+    }
   }
 
   return (
@@ -374,12 +381,15 @@ const ChatListScreen = ({ route, navigation }) => {
           source={require('./assets/logo.png')}
           style={styles.logo}
         />
-        <TouchableOpacity onPress={handleAddPress}>
+        {activeTab === 'messages' ? (
+          <TouchableOpacity onPress={handleAddPress}>
           <Image
             source={require('./assets/plus.png')}
             style={styles.headerButtons}
           />
         </TouchableOpacity>
+        ):<View style={styles.headerButtons}> 
+          </View>}
       </View>
       <ActionSheet
         ref={actionSheetRef}
