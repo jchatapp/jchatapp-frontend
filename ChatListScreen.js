@@ -7,14 +7,14 @@ import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
 import config from './config';
 import { Swipeable } from 'react-native-gesture-handler';
-import {getCurrentTimestampMicro} from './utils'
+import {getCurrentTimestampMicro} from './utils';
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
-  const userpk = userInfo.pk
+  const userpk = userInfo.pk;
   const initialUserList = route.params.userList ? route.params.userList.usersList : [];
-  const userPostList = route.params.userPostList
+  const [userPostList, setUserPostList] = useState(route.params.userPostList);
   const [userList, setUserList] = useState(initialUserList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
@@ -25,7 +25,7 @@ const ChatListScreen = ({ route, navigation }) => {
   const actionSheetRef = useRef();
   const isFocused = useIsFocused();
   const isFocusedActivity = useIsFocused();
-  
+
   const handleLogout = async () => {
     try {
       const response = await axios.post(config.API_URL + '/logout');
@@ -53,12 +53,12 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const handleActionSheetPress = (index) => {   
     if (index === 1) { 
-      handleLogout()
+      handleLogout();
     }
   };
-  
+
   const handleAddPress = () => {
-    navigation.navigate('NewMessageScreen', { userInfo });  
+    navigation.navigate('NewMessageScreen', { userInfo, navigation });  
   };
 
   // Set Polling to false when not on ChatListScreen
@@ -127,7 +127,7 @@ const ChatListScreen = ({ route, navigation }) => {
         }
       });
     });
-
+    
     setUserMap(newUserMap);
   };
 
@@ -205,13 +205,12 @@ const ChatListScreen = ({ route, navigation }) => {
     }
   };
 
-
   const deleteChat = async (threadId) => {
     try {
       const response = await fetch(`${config.API_URL}/delete?thread_id=${threadId}`, { method: 'POST' });
       if (response.ok) {
         updateChatList(threadId);
-        fetchChatList()
+        fetchChatList();
       } else {
         throw new Error('Failed to delete chat');
       }
@@ -327,6 +326,10 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
+  const updateUserPostList = (newUserPostList) => {
+    setUserPostList(newUserPostList);
+  };
+
   const renderUserInfo = () => {
     return (
       <View style={styles.userInfoContainer}>
@@ -334,7 +337,11 @@ const ChatListScreen = ({ route, navigation }) => {
         <View style={styles.userInfoTextContainer}>
           <Text style={styles.userName}>{userInfo.username}</Text>
           <Text style={styles.userStats}>Followers: {userInfo.follower_count} | Following: {userInfo.following_count}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {userList, userpk, fetchUserList})}>
+          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {
+            userList, 
+            userpk, 
+            userPostList, 
+            onUserPostListUpdate: updateUserPostList})}>
             <Text style={styles.buttonText}>Edit close following</Text>
           </TouchableOpacity>
         </View>
@@ -347,8 +354,18 @@ const ChatListScreen = ({ route, navigation }) => {
         <View style={styles.itemContainerforitems}>
         <Image style={styles.profileImageUserList} source={{ uri: item.profile_pic_url }} />
         <View style={styles.textContainerUserList}>
-          <Text style={styles.usernameUserList}>{item.username}</Text>
-          <Text style={styles.userListInforText}>No New Posts</Text>
+        { userPostList[item.pk].newPosts.length > 0 ? (
+            <Text style={styles.usernameUserList}>{item.username} •</Text>
+          ) : (
+            <Text style={styles.usernameUserList}>{item.username}</Text>
+            )
+          }
+          { userPostList[item.pk].newPosts.length > 0 ? (
+            <Text style={styles.userListInforTextBold}>{userPostList[item.pk].newPosts.length} New Posts</Text>
+          ) : (
+            <Text style={styles.userListInforText}>No New Posts</Text>
+            )
+          }
         </View>
       </View>
     </TouchableOpacity>
@@ -356,17 +373,46 @@ const ChatListScreen = ({ route, navigation }) => {
 
   async function updateTimestamp(item) {
     try {
-      const response = await axios.post(config.API_URL + '/setTimestampandSeen', {
-        userpk: userpk,
-        itempk: item.pk,
-        lastSeenTimestamp: getCurrentTimestampMicro()
-      })
-      
-      console.log(userPostList)
-    } catch(error) {
-      console.error(error)
+        const response = await axios.post(config.API_URL + '/setTimestampandSeen', {
+            userpk: userpk,
+            itempk: item.pk,
+            lastSeenTimestamp: getCurrentTimestampMicro()
+        });
+        
+        const postlist = userPostList[item.pk];
+        const updatedPostlist = {
+            ...postlist,
+            oldPosts: [...postlist.oldPosts, ...postlist.newPosts],
+            newPosts: []
+        };
+        
+        const updatedUserPostList = {
+            ...userPostList,
+            [item.pk]: updatedPostlist
+        };
+        
+        setUserPostList(updatedUserPostList);
+        
+        navigation.navigate('TimelineDisplay', { postlist: updatedPostlist, item });
+    } catch (error) {
+        console.error(error);
     }
-  }
+}
+
+  useEffect(() => {
+    if (userList && userPostList) {
+      const sortedList = [...userList].sort((a, b) => {
+        const aNewPosts = (userPostList[a.pk] && userPostList[a.pk].newPosts) ? userPostList[a.pk].newPosts.length : 0;
+        const bNewPosts = (userPostList[b.pk] && userPostList[b.pk].newPosts) ? userPostList[b.pk].newPosts.length : 0;
+        return bNewPosts - aNewPosts;
+      });
+  
+      // Update userList state only if it's different to avoid infinite loops
+      if (JSON.stringify(sortedList) !== JSON.stringify(userList)) {
+        setUserList(sortedList);
+      }
+    }
+  }, [userPostList, userList]); 
 
   return (
     <View style={styles.container}>
@@ -438,15 +484,16 @@ const ChatListScreen = ({ route, navigation }) => {
             </View>
           ) : (
             <FlatList
-              data={userList}
-              keyExtractor={(item) => item.pk.toString()}
-              renderItem={renderUserItem}
-              ListEmptyComponent={() => (
-                <View style={styles.emptyUserListContainer}>
-                  <Text style={styles.noUserEmptyText}>No users found</Text>
-                </View>
-              )}
-            />
+            data={userList}
+            keyExtractor={(item) => item.pk.toString()}
+            renderItem={renderUserItem}
+            contentContainerStyle={styles.userListContainer}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyUserListContainer}>
+                <Text style={styles.noUserEmptyText}>No users found</Text>
+              </View>
+            )}
+          />
           )}
         </>
       )}
@@ -650,6 +697,12 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     color: 'gray'
   },
+  userListInforTextBold: {
+    fontSize: 14,
+    marginLeft: 20,
+    color: 'black',
+    fontWeight: 'bold'
+  },
   emptyUserListContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -659,7 +712,11 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'gray',
     textAlign: 'center'
-  }
+  },
+  userListContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-start'
+  },
 });
 
 export default ChatListScreen;

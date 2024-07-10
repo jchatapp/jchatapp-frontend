@@ -7,7 +7,7 @@ import config from './config';
 
 const EditUserListScreen = ({ route }) => {
   const navigation = useNavigation();
-  const { userList, userpk } = route.params;
+  const { userList, userpk, userPostList } = route.params;
   const [searchQuery, setSearchQuery] = useState('');
   const [localUserList, setLocalUserList] = useState(userList);
   const [users, setUsers] = useState([]);
@@ -17,10 +17,12 @@ const EditUserListScreen = ({ route }) => {
   const [debounceTimeout, setDebounceTimeout] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [privateUsers, setPrivateUsers] = useState([]);
+  const { onUserPostListUpdate } = route.params;
 
   const filteredUserList = localUserList.filter(user =>
     user.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
 
   async function deleteUserFromList(pk) {
     try {
@@ -84,22 +86,40 @@ const EditUserListScreen = ({ route }) => {
   };
 
   const addUsertoList = async () => {
-    try {
-      const privateUserList = checkPrivateUsers(selectedUsers);
-      if (privateUserList.length > 0) {
-        throw new Error(`Cannot add private users you are not following: ${privateUserList.join(', ')}`);
-      }
-      await axios.post(config.API_URL + '/addusertolist', {
-        userId: userpk,
-        usersList: selectedUsers
+  try {
+    const privateUserList = checkPrivateUsers(selectedUsers);
+    if (privateUserList.length > 0) {
+      throw new Error(`Cannot add private users you are not following: ${privateUserList.join(', ')}`);
+    }
+    
+    const response = await axios.post(config.API_URL + '/addusertolist', {
+      userId: userpk,
+      usersList: selectedUsers
+    });
+
+    if (response.status === 200) {
+      // Update local user list
+      const updatedLocalUserList = [...localUserList, ...selectedUsers];
+      setLocalUserList(updatedLocalUserList);
+
+      // Update userPostList with empty posts for new users
+      const updatedUserPostList = { ...userPostList };
+      selectedUsers.forEach(user => {
+        updatedUserPostList[user.pk] = { newPosts: [], oldPosts: [] };
       });
-      setLocalUserList([...localUserList, ...selectedUsers]);
+
+      // Use the callback to update the userPostList in the parent component
+      onUserPostListUpdate(updatedUserPostList);
+
+      // Reset selected users and search query
       setSelectedUsers([]);
       setSearchQuery('');
-    } catch (error) {
-      alert(error.message);
     }
-  };
+  } catch (error) {
+    console.error("Failed to add user to list:", error);
+    alert(error.message);
+  }
+};
 
   function checkPrivateUsers(selectedUsers) {
     let tempPrivateUsers = [];

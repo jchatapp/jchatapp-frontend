@@ -13,6 +13,7 @@ import NewMessageScreen from './NewMessageScreen';
 import ReactionScreen from './ReactionScreen';
 import ChatSettings from './ChatSettings';
 import EditUserListScreen from './EditUserListScreen'
+import TimelineDisplay from './TimelineDisplay'
 
 const Stack = createStackNavigator();
 
@@ -32,6 +33,7 @@ function App() {
         <Stack.Screen name="ReactionScreen" component={ReactionScreen} options={{ headerShown: false }} />
         <Stack.Screen name="ChatSettings" component={ChatSettings} options={{ headerShown: false }} />
         <Stack.Screen name="EditUserListScreen" component={EditUserListScreen} options={{ headerShown: false }} />
+        <Stack.Screen name="TimelineDisplay" component={TimelineDisplay} options={{ headerShown: false }} />
       </Stack.Navigator>
     </NavigationContainer>
   );
