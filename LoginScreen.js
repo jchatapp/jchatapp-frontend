@@ -21,7 +21,8 @@ const LoginScreen = ({ navigation }) => {
         const userInfo = response.data.userInfo;
         const chatList = response.data.chatList;
         const userList = response.data.userList;
-        navigation.replace('ChatListScreen', { chatList, userInfo, userList });
+        const userPostList = response.data.userPostList;
+        navigation.replace('ChatListScreen', { chatList, userInfo, userList, userPostList });
       } else {
         setErrorMessage('Login failed: Invalid username or password.'); 
       }

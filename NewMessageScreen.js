@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator } from 'react-native';
-import { Button } from 'react-native';
+import { View, Text, FlatList, TouchableOpacity, StyleSheet, Image, TextInput, KeyboardAvoidingView, Platform, Alert, ActivityIndicator, Modal } from 'react-native';
 import axios from 'axios';
 import config from './config';
 
@@ -14,6 +13,7 @@ const NewMessageScreen = ({ route, navigation }) => {
   const [debounceTimeout, setDebounceTimeout] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [messageText, setMessageText] = useState('');
+  const [loadingScreenVisible, setLoadingScreenVisible] = useState(false);
 
   useEffect(() => {
     if (debounceTimeout) {
@@ -80,6 +80,7 @@ const NewMessageScreen = ({ route, navigation }) => {
   };
 
   const createChat = async () => {
+    setLoadingScreenVisible(true);
     try {
       const response = await axios.post(config.API_URL + `/createchat`, {
         users: selectedUsers,
@@ -87,12 +88,14 @@ const NewMessageScreen = ({ route, navigation }) => {
       });
       const chatMessages = await fetchChatMessages(response.data.thread.threadId)
       if (chatMessages) {
+        setLoadingScreenVisible(false);
         navigation.replace('ChatMessages', { chatList: chatMessages });
       }
-  } catch (error) {
-    console.error(error)
+    } catch (error) {
+      console.error(error);
+      setLoadingScreenVisible(false);
+    }
   }
-}
 
   const renderSelectedUserItem = ({ item }) => (
     <View style={styles.selectedUserItem}>
@@ -165,26 +168,37 @@ const NewMessageScreen = ({ route, navigation }) => {
           />
         )}
       </View>
-         <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.input}
-            value={messageText}
-            onChangeText={setMessageText}
-            placeholder="Message..."
-            placeholderTextColor="#888" 
-          />
-          <TouchableOpacity
-            style={[styles.sendButton, (selectedUsers.length === 0 || messageText.trim().length === 0) ? styles.disabledSendButton : null]}
-            onPress={() => {
-              if (selectedUsers.length > 0 && messageText.trim().length > 0) {
-                createChat();
-              }
-            }}
-            disabled={selectedUsers.length === 0 || messageText.trim().length === 0}
-          >
-            <Text style={styles.sendButtonText}>Send</Text>
-          </TouchableOpacity>
-        </View>
+      <View style={styles.inputContainer}>
+        <TextInput
+          style={styles.input}
+          value={messageText}
+          onChangeText={setMessageText}
+          placeholder="Message..."
+          placeholderTextColor="#888" 
+        />
+        <TouchableOpacity
+          style={[styles.sendButton, (selectedUsers.length === 0 || messageText.trim().length === 0) ? styles.disabledSendButton : null]}
+          onPress={() => {
+            if (selectedUsers.length > 0 && messageText.trim().length > 0) {
+              createChat();
+            }
+          }}
+          disabled={selectedUsers.length === 0 || messageText.trim().length === 0}
+        >
+          <Text style={styles.sendButtonText}>Send</Text>
+        </TouchableOpacity>
+      </View>
+      {loadingScreenVisible && (
+        <Modal
+          transparent={true}
+          animationType="fade"
+          visible={loadingScreenVisible}
+        >
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color='white' />
+          </View>
+        </Modal>
+      )}
     </KeyboardAvoidingView>
   );
 };
@@ -322,7 +336,6 @@ const styles = StyleSheet.create({
     shadowRadius: 3.84,
     elevation: 5,
   },
-
   inputContainer: {
     flexDirection: 'row',
     padding: 10,
@@ -351,6 +364,12 @@ const styles = StyleSheet.create({
   },
   disabledSendButton: {
     backgroundColor: 'lightgray', 
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
   },
 });
 

@@ -1,19 +1,21 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput, Animated } from 'react-native';
+import { View, Text, TouchableOpacity, FlatList, Image, StyleSheet, TextInput, Animated, Pressable } from 'react-native';
 import { useIsFocused } from '@react-navigation/native';
 import ActionSheet from 'react-native-actionsheet';
 import { LogBox } from 'react-native';
 import { CommonActions } from '@react-navigation/native';
 import axios from 'axios';
+import { Video } from 'expo-av';
 import config from './config';
 import { Swipeable } from 'react-native-gesture-handler';
-
+import {getCurrentTimestampMicro} from './utils';
 LogBox.ignoreLogs(['Animated: `useNativeDriver`']);
 
 const ChatListScreen = ({ route, navigation }) => {
   const { userInfo } = route.params;
-  const userpk = userInfo.pk
+  const userpk = userInfo.pk;
   const initialUserList = route.params.userList ? route.params.userList.usersList : [];
+  const [userPostList, setUserPostList] = useState(route.params.userPostList);
   const [userList, setUserList] = useState(initialUserList);
   const [chatList, setChatList] = useState(route.params.chatList);
   const [activeTab, setActiveTab] = useState('messages');
@@ -21,10 +23,12 @@ const ChatListScreen = ({ route, navigation }) => {
   const [polling, setPolling] = useState(true);
   const [chatMap, setChatMap] = useState({});
   const [userMap, setUserMap] = useState({});
+  const [refreshing, setRefreshing] = useState(false);
   const actionSheetRef = useRef();
   const isFocused = useIsFocused();
+  const ref = useRef( null );
   const isFocusedActivity = useIsFocused();
-  
+
   const handleLogout = async () => {
     try {
       const response = await axios.post(config.API_URL + '/logout');
@@ -52,16 +56,12 @@ const ChatListScreen = ({ route, navigation }) => {
 
   const handleActionSheetPress = (index) => {   
     if (index === 1) { 
-      handleLogout()
+      handleLogout();
     }
   };
-  
+
   const handleAddPress = () => {
-    if (activeTab == 'messages') {
-      navigation.navigate('NewMessageScreen', { userInfo });  
-    } else {
-      navigation.navigate('AddUsertoList', {userInfo, onGoBack: fetchUserList});
-    }  
+    navigation.navigate('NewMessageScreen', { userInfo, navigation });  
   };
 
   // Set Polling to false when not on ChatListScreen
@@ -130,7 +130,7 @@ const ChatListScreen = ({ route, navigation }) => {
         }
       });
     });
-
+    
     setUserMap(newUserMap);
   };
 
@@ -156,17 +156,19 @@ const ChatListScreen = ({ route, navigation }) => {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ userId: userInfo.pk }) 
+        body: JSON.stringify({ userId: userInfo.pk })
       });
       if (!response.ok) {
         throw new Error('Failed to fetch user list');
       }
       const newData = await response.json();
-      setUserList(newData.response.usersList); 
+      if (newData.response) {
+        setUserList(newData.response.usersList);
+      }
     } catch (error) {
       console.error('Failed to fetch user list:', error);
     }
-  };
+  };  
 
   // fetch chat messages on click of given chat
   const fetchChatMessages = async (threadId) => {
@@ -208,13 +210,11 @@ const ChatListScreen = ({ route, navigation }) => {
     }
   };
 
-
   const deleteChat = async (threadId) => {
     try {
       const response = await fetch(`${config.API_URL}/delete?thread_id=${threadId}`, { method: 'POST' });
       if (response.ok) {
-        updateChatList(threadId);
-        fetchChatList()
+        setChatList(prevChatList => prevChatList.filter(chat => chat.thread_id !== threadId));
       } else {
         throw new Error('Failed to delete chat');
       }
@@ -254,6 +254,18 @@ const ChatListScreen = ({ route, navigation }) => {
     item.thread_title.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const filterUserStoriesByTimestamp = (userStories, timestamp) => {
+    return userStories.filter(story => story.device_timestamp > timestamp);
+  };
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    setTimeout(() => {
+      setRefreshing(false);
+      console.log('List refreshed');
+    }, 2000);
+  };
+
   const GroupProfilePics = ({ chatList }) => {
     if (chatList.users.length < 2) {
       return null; 
@@ -273,23 +285,40 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
+  const getTimeAgo = (timestampMicroseconds) => {
+    const timestamp = timestampMicroseconds / 1000;
+    const now = Date.now();
+    const secondsAgo = Math.floor((now - timestamp) / 1000);
+  
+    if (secondsAgo < 60) return `${secondsAgo}s`;
+    const minutesAgo = Math.floor(secondsAgo / 60);
+    if (minutesAgo < 60) return `${minutesAgo}m`;
+    const hoursAgo = Math.floor(minutesAgo / 60);
+    if (hoursAgo < 24) return `${hoursAgo}h`;
+    const daysAgo = Math.floor(hoursAgo / 24);
+    if (daysAgo < 7) return `${daysAgo}d`;
+    const weeksAgo = Math.floor(daysAgo / 7);
+    return `${weeksAgo}w`;
+  };
+
   const renderChatItem = ({ item }) => {
     const getUsernameById = (userId) => userMap[userId] || 'Unknown';
   
     const renderItemContent = () => {
-      const { item_type, text, user_id, action_log } = item.last_permanent_item;
+      const { item_type, text, user_id, action_log, timestamp } = item.last_permanent_item;
+      const timeAgo = getTimeAgo(timestamp);
   
       switch (item_type) {
         case "text":
           return (
-            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-              {text}
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]} numberOfLines={2}>
+              {text}  <Text style={styles.timeStyle}>• {timeAgo}</Text>
             </Text>
           );
         case "action_log":
           return (
-            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-              {action_log.description}
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]} numberOfLines={2}>
+              {action_log.description}  <Text style={styles.timeStyle}>• {timeAgo}</Text>
             </Text>
           );
           
@@ -297,8 +326,8 @@ const ChatListScreen = ({ route, navigation }) => {
           const username = getUsernameById(user_id);
           const message = username === 'Unknown' ? "Sent an attachment" : `${username} sent an attachment`;
           return (
-            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]}>
-              {message}
+            <Text style={[styles.chatSnippet, item.read_state === 1 ? styles.boldText : null]} numberOfLines={2}>
+              {message}  <Text style={styles.timeStyle}>• {timeAgo}</Text>
             </Text>
           );
       }
@@ -329,6 +358,11 @@ const ChatListScreen = ({ route, navigation }) => {
       </Swipeable>
     );
   };
+  
+
+  const updateUserPostList = (newUserPostList) => {
+    setUserPostList(newUserPostList);
+  };
 
   const renderUserInfo = () => {
     return (
@@ -337,7 +371,15 @@ const ChatListScreen = ({ route, navigation }) => {
         <View style={styles.userInfoTextContainer}>
           <Text style={styles.userName}>{userInfo.username}</Text>
           <Text style={styles.userStats}>Followers: {userInfo.follower_count} | Following: {userInfo.following_count}</Text>
-          <TouchableOpacity style={styles.button} onPress={() => navigation.navigate('EditUserListScreen', {userList, userpk, fetchUserList})}>
+          <TouchableOpacity 
+            style={styles.button} 
+            onPress={() => navigation.navigate('EditUserListScreen', {
+              userList, 
+              userpk, 
+              userPostList, 
+              onUserPostListUpdate: updateUserPostList
+            })}
+          >
             <Text style={styles.buttonText}>Edit close following</Text>
           </TouchableOpacity>
         </View>
@@ -345,21 +387,147 @@ const ChatListScreen = ({ route, navigation }) => {
     );
   };
 
-  const renderUserItem = ({ item }) => (
-    <TouchableOpacity onPress={() => updateTimestamp(item)}>
-        <View style={styles.itemContainerforitems}>
-        <Image style={styles.profileImageUserList} source={{ uri: item.profile_pic_url }} />
-        <View style={styles.textContainerUserList}>
-          <Text style={styles.usernameUserList}>{item.username}</Text>
-          <Text style={styles.userListInforText}>No New Posts</Text>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-
-  function updateTimestamp(item) {
-    console.log(item)
+  async function handleStories(stories) {
+    try {
+      const response = await axios.post(config.API_URL + '/setStoryTimestamp', {
+        userpk: userpk,
+        stories: stories[0].id,
+        lastSeenTimestamp: getCurrentTimestampMicro()
+      });
+  
+      const updatedUserPostList = {
+        ...userPostList,
+        [stories[0].id]: {
+          ...userPostList[stories[0].id],
+          storyCursor: getCurrentTimestampMicro(),
+        }
+      };
+      
+      setUserPostList(updatedUserPostList);
+      navigation.navigate('StoriesScreen', { stories, navigation });
+    } catch (error) {
+      console.error(error);
+    }
   }
+  
+  const renderUserItem = ({ item }) => {
+    let filteredStories = [];
+    let allstories = userPostList[item.pk]?.userStories;
+  
+    if (userPostList[item.pk]?.userStories.length > 0) {
+      filteredStories = filterUserStoriesByTimestamp(userPostList[item.pk].userStories, userPostList[item.pk].storyCursor);
+    }
+  
+    const hasFilteredStories = filteredStories.length > 0;
+  
+    const stories = [{
+      id: item.pk.toString(),
+      name: item.username,
+      imgUrl: item.profile_pic_url,
+      stories: allstories.map(story => ({
+        id: story.id.toString(),
+        source: {
+          uri: story.media_type === 1 ? story.image_versions2.candidates[0].url : story.video_versions[0].url
+        },
+        mediaType: story.media_type === 1 ? 'image' : 'video'
+      })),
+    }];
+  
+    const getBorderStyle = () => {
+      if (userPostList[item.pk]?.userStories.length > 0) {
+        return hasFilteredStories ? styles.outerBorder : styles.outerBorderPurple;
+      }
+      return styles.outerBorderInvis;
+    };
+  
+    return (
+      <View style={styles.itemContainerforitems}>
+        <TouchableOpacity
+          style={styles.profileTouchArea}
+          onPress={() => {
+            if (userPostList[item.pk]?.userStories.length > 0) {
+              handleStories(stories);
+            }
+          }}
+        >
+          <View style={getBorderStyle()}>
+            <View style={styles.middleBorder}>
+              <Image
+                style={styles.profileImageUserList}
+                source={{ uri: item.profile_pic_url }}
+              />
+            </View>
+          </View>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.textContainerUserList}
+          onPress={() => updateTimestamp(item)}
+        >
+          <Text style={styles.usernameUserList}>{item.username}</Text>
+          {userPostList[item.pk].newPosts.length > 0 && (
+            <Text style={styles.userListInforTextBold}>
+              {userPostList[item.pk].newPosts.length} New Posts {hasFilteredStories ? `• ${filteredStories.length} New Stories` : ''}
+            </Text>
+          )}
+          {!hasFilteredStories && userPostList[item.pk].newPosts.length === 0 && (
+            <Text style={styles.userListInforText}>
+              No New Posts
+            </Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+  
+  
+  async function updateTimestamp(item) {
+    try {
+        const response = await axios.post(config.API_URL + '/setTimestampandSeen', {
+            userpk: userpk,
+            itempk: item.pk,
+            lastSeenTimestamp: getCurrentTimestampMicro()
+        });
+        
+        const postlist = userPostList[item.pk];
+        const updatedPostlist = {
+            ...postlist,
+            oldPosts: [...postlist.oldPosts, ...postlist.newPosts],
+            newPosts: []
+        };
+        
+        const updatedUserPostList = {
+            ...userPostList,
+            [item.pk]: updatedPostlist
+        };
+        
+        setUserPostList(updatedUserPostList);
+        
+        navigation.navigate('TimelineDisplay', { postlist: postlist, item });
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+useEffect(() => {
+  if (userList && userPostList) {
+    const sortedList = [...userList].sort((a, b) => {
+      const aNewPosts = userPostList[a.pk]?.newPosts?.length || 0;
+      const bNewPosts = userPostList[b.pk]?.newPosts?.length || 0;
+
+      if (aNewPosts !== bNewPosts) {
+        return bNewPosts - aNewPosts; 
+      }
+
+      const aStories = userPostList[a.pk]?.userStories?.length || 0;
+      const bStories = userPostList[b.pk]?.userStories?.length || 0;
+      return bStories - aStories; 
+    });
+
+    if (JSON.stringify(sortedList) !== JSON.stringify(userList)) {
+      setUserList(sortedList);
+    }
+  }
+}, [userPostList, userList]);
 
   return (
     <View style={styles.container}>
@@ -374,12 +542,15 @@ const ChatListScreen = ({ route, navigation }) => {
           source={require('./assets/logo.png')}
           style={styles.logo}
         />
-        <TouchableOpacity onPress={handleAddPress}>
+        {activeTab === 'messages' ? (
+          <TouchableOpacity onPress={handleAddPress}>
           <Image
             source={require('./assets/plus.png')}
             style={styles.headerButtons}
           />
         </TouchableOpacity>
+        ):<View style={styles.headerButtons}> 
+          </View>}
       </View>
       <ActionSheet
         ref={actionSheetRef}
@@ -428,15 +599,19 @@ const ChatListScreen = ({ route, navigation }) => {
             </View>
           ) : (
             <FlatList
-              data={userList}
-              keyExtractor={(item) => item.pk.toString()}
-              renderItem={renderUserItem}
-              ListEmptyComponent={() => (
-                <View style={styles.emptyUserListContainer}>
-                  <Text style={styles.noUserEmptyText}>No users found</Text>
-                </View>
-              )}
-            />
+            data={userList}
+            keyExtractor={(item) => item.pk.toString()}
+            renderItem={renderUserItem}
+            onEndReachedThreshold={1}
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            contentContainerStyle={styles.userListContainer}
+            ListEmptyComponent={() => (
+              <View style={styles.emptyUserListContainer}>
+                <Text style={styles.noUserEmptyText}>No users found</Text>
+              </View>
+            )}
+          />
           )}
         </>
       )}
@@ -494,9 +669,8 @@ const styles = StyleSheet.create({
   },
   chatItem: {
     flexDirection: 'row',
-    padding: 10,
-    borderBottomColor: '#ddd',
-    borderBottomWidth: 1,
+    paddingHorizontal: 10,
+    paddingVertical: 10,
   },
   chatImage: {
     width: 50,
@@ -614,6 +788,7 @@ const styles = StyleSheet.create({
   itemContainerforitems: {
     flexDirection: 'row',
     paddingHorizontal: 10,
+    paddingVertical: 4,
     width: '100%',
     alignItems: 'center',
     minHeight: 80, 
@@ -640,6 +815,12 @@ const styles = StyleSheet.create({
     marginLeft: 20,
     color: 'gray'
   },
+  userListInforTextBold: {
+    fontSize: 14,
+    marginLeft: 20,
+    color: 'black',
+    fontWeight: 'bold'
+  },
   emptyUserListContainer: {
     justifyContent: 'center',
     alignItems: 'center',
@@ -649,7 +830,33 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: 'gray',
     textAlign: 'center'
-  }
+  },
+  userListContainer: {
+    flexGrow: 1,
+    justifyContent: 'flex-start'
+  },
+  outerBorder: {
+    borderColor: 'orange',
+    borderWidth: 3,
+    padding: 1,
+    borderRadius: 40
+  },
+  outerBorderPurple: {
+    borderColor: 'gray',
+    borderWidth: 3,
+    padding: 1,
+    borderRadius: 40
+  },
+  middleBorder: {
+    backgroundColor: 'white',
+    borderRadius: 40
+  },
+  outerBorderInvis: {
+    borderColor: 'transparent',
+    borderWidth: 3,
+    padding: 1,
+    borderRadius: 40
+  },
 });
 
 export default ChatListScreen;

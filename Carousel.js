@@ -47,7 +47,6 @@ const Carousel = ({ route, navigation }) => {
         />
       </TouchableOpacity>
     </View>
-    
   );
 };
 
