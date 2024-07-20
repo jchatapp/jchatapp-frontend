@@ -363,7 +363,7 @@ const ChatListScreen = ({ route, navigation }) => {
   const updateUserPostList = (newUserPostList) => {
     setUserPostList(newUserPostList);
   };
-
+  
   const renderUserInfo = () => {
     return (
       <View style={styles.userInfoContainer}>
