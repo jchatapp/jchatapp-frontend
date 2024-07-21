@@ -120,9 +120,21 @@ const RenderItemType2 = ({ item, isFocused, navigation }) => {
     );
 };
 
-const RenderItemType8 = ({ item, navigation }) => {
+const RenderItemType8 = ({ item, isFocused, navigation }) => {
+    const videoRefs = useRef([]);
+
     const [showFullCaption, setShowFullCaption] = useState(false);
     const [isCaptionTruncated, setIsCaptionTruncated] = useState(false);
+
+    useEffect(() => {
+        videoRefs.current.forEach((videoRef, index) => {
+            if (isFocused) {
+                videoRef?.playAsync();
+            } else {
+                videoRef?.pauseAsync();
+            }
+        });
+    }, [isFocused]);
 
     const toggleCaption = () => {
         setShowFullCaption(!showFullCaption);
@@ -136,10 +148,10 @@ const RenderItemType8 = ({ item, navigation }) => {
                         media.media_type === 2 ? (
                             <Video
                                 key={index}
+                                ref={ref => videoRefs.current[index] = ref}
                                 source={{ uri: media.video_versions[0].url }}
                                 style={styles.media}
                                 resizeMode="cover"
-                                shouldPlay={true}
                                 isLooping
                             />
                         ) : (

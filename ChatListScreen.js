@@ -267,7 +267,7 @@ const ChatListScreen = ({ route, navigation }) => {
   };
 
   const GroupProfilePics = ({ chatList }) => {
-    if (chatList.users.length < 2) {
+    if (chatList.users?.length < 2) {
       return null; 
     }
   
@@ -414,7 +414,7 @@ const ChatListScreen = ({ route, navigation }) => {
     let filteredStories = [];
     let allstories = userPostList[item.pk]?.userStories;
   
-    if (userPostList[item.pk]?.userStories.length > 0) {
+    if (userPostList[item.pk]?.userStories?.length > 0) {
       filteredStories = filterUserStoriesByTimestamp(userPostList[item.pk].userStories, userPostList[item.pk].storyCursor);
     }
   
@@ -424,17 +424,17 @@ const ChatListScreen = ({ route, navigation }) => {
       id: item.pk.toString(),
       name: item.username,
       imgUrl: item.profile_pic_url,
-      stories: allstories.map(story => ({
+      stories: allstories ? allstories.map(story => ({
         id: story.id.toString(),
         source: {
           uri: story.media_type === 1 ? story.image_versions2.candidates[0].url : story.video_versions[0].url
         },
         mediaType: story.media_type === 1 ? 'image' : 'video'
-      })),
+      })) : []
     }];
   
     const getBorderStyle = () => {
-      if (userPostList[item.pk]?.userStories.length > 0) {
+      if (userPostList[item.pk]?.userStories?.length > 0) {
         return hasFilteredStories ? styles.outerBorder : styles.outerBorderPurple;
       }
       return styles.outerBorderInvis;
@@ -445,7 +445,7 @@ const ChatListScreen = ({ route, navigation }) => {
         <TouchableOpacity
           style={styles.profileTouchArea}
           onPress={() => {
-            if (userPostList[item.pk]?.userStories.length > 0) {
+            if (userPostList[item.pk]?.userStories?.length > 0) {
               handleStories(stories);
             }
           }}
@@ -464,12 +464,12 @@ const ChatListScreen = ({ route, navigation }) => {
           onPress={() => updateTimestamp(item)}
         >
           <Text style={styles.usernameUserList}>{item.username}</Text>
-          {userPostList[item.pk].newPosts.length > 0 && (
+          {userPostList[item.pk].newPosts?.length > 0 && (
             <Text style={styles.userListInforTextBold}>
-              {userPostList[item.pk].newPosts.length} New Posts {hasFilteredStories ? `• ${filteredStories.length} New Stories` : ''}
+              {userPostList[item.pk].newPosts?.length} New Posts {hasFilteredStories ? `• ${filteredStories.length} New Stories` : ''}
             </Text>
           )}
-          {!hasFilteredStories && userPostList[item.pk].newPosts.length === 0 && (
+          {!hasFilteredStories && userPostList[item.pk].newPosts?.length === 0 && (
             <Text style={styles.userListInforText}>
               No New Posts
             </Text>
@@ -593,7 +593,7 @@ useEffect(() => {
       ) : (
         <>
           {renderUserInfo()}
-          {userList.length === 0 ? (
+          {userList?.length === 0 ? (
             <View style={styles.emptyUserListContainer}>
               <Text style={styles.noUserEmptyText}>User list is empty</Text>
             </View>
