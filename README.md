@@ -29,4 +29,5 @@ To get started with JustChat, follow these steps:
    ```bash
    node server.js
    npm start
+6. **Run in a simulator**
    
